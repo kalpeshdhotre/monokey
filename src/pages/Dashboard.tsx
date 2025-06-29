@@ -15,11 +15,16 @@ import {
   RefreshCw,
   Sun,
   Moon,
-  AlertTriangle
+  AlertTriangle,
+  Upload,
+  Download,
+  FileText,
+  FolderOpen
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { DatabaseService } from '../utils/database';
+import { LocalStorageService } from '../utils/localStorageService';
 import { CryptoUtils } from '../utils/crypto';
 import { Credential, StorageLocation } from '../types';
 import Button from '../components/UI/Button';
@@ -33,9 +38,11 @@ const Dashboard: React.FC = () => {
   const { user, monoPassword, setMonoPassword, verifyMonoPassword, isLoading: authLoading, refreshUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [localCredentials, setLocalCredentials] = useState<Credential[]>([]);
   const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [storageLocation, setStorageLocation] = useState<StorageLocation>('saas');
+  const [selectedLocalFile, setSelectedLocalFile] = useState<File | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMonoPasswordPromptOpen, setIsMonoPasswordPromptOpen] = useState(false);
@@ -43,22 +50,35 @@ const Dashboard: React.FC = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
   const [credentialToDelete, setCredentialToDelete] = useState<Credential | null>(null);
-  const [pendingAction, setPendingAction] = useState<{ type: 'view' | 'copy' | 'load', field?: string, value?: string, credentialId?: string } | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ 
+    type: 'view' | 'copy' | 'load' | 'loadLocal', 
+    field?: string, 
+    value?: string, 
+    credentialId?: string,
+    file?: File 
+  } | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [monoPasswordSetup, setMonoPasswordSetup] = useState('');
   const [confirmMonoPassword, setConfirmMonoPassword] = useState('');
   const [isSettingUpPassword, setIsSettingUpPassword] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   console.log('Dashboard render - user:', user?.email, 'authLoading:', authLoading, 'monoPassword:', !!monoPassword);
 
+  // Get current credentials based on storage location
+  const getCurrentCredentials = () => {
+    return storageLocation === 'local' ? localCredentials : credentials;
+  };
+
   useEffect(() => {
-    const filtered = credentials.filter(cred =>
+    const currentCredentials = getCurrentCredentials();
+    const filtered = currentCredentials.filter(cred =>
       cred.accountName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cred.username.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredCredentials(filtered);
-  }, [searchTerm, credentials]);
+  }, [searchTerm, credentials, localCredentials, storageLocation]);
 
   useEffect(() => {
     console.log('Dashboard useEffect - user:', user?.email, 'monoPassword:', !!monoPassword);
@@ -73,18 +93,23 @@ const Dashboard: React.FC = () => {
     if (user && (!user.monoPasswordHash || user.monoPasswordHash === '')) {
       console.log('User needs to set up MonoPassword');
       setIsMonoPasswordSetupOpen(true);
-    } else if (user && !monoPassword) {
-      // User has MonoPassword set up but not entered yet
+    } else if (user && !monoPassword && storageLocation === 'saas') {
+      // User has MonoPassword set up but not entered yet (only for Supabase)
       console.log('User needs to enter MonoPassword');
       setIsMonoPasswordPromptOpen(true);
-    } else if (user && monoPassword) {
-      // MonoPassword is available, load credentials
-      console.log('Loading credentials...');
+    } else if (user && monoPassword && storageLocation === 'saas') {
+      // MonoPassword is available, load credentials from Supabase
+      console.log('Loading credentials from Supabase...');
       loadCredentials();
     }
-  }, [user, monoPassword, authLoading]);
+  }, [user, monoPassword, authLoading, storageLocation]);
 
   const loadCredentials = async () => {
+    if (storageLocation === 'local') {
+      // For local storage, credentials are already loaded when file is selected
+      return;
+    }
+
     if (!monoPassword) {
       console.log('No monoPassword available for loading credentials');
       return;
@@ -181,6 +206,8 @@ const Dashboard: React.FC = () => {
     if (pendingAction) {
       if (pendingAction.type === 'load') {
         await loadCredentials();
+      } else if (pendingAction.type === 'loadLocal' && pendingAction.file) {
+        await loadLocalFile(pendingAction.file, password);
       } else {
         executeSecureAction(
           pendingAction.type as 'view' | 'copy', 
@@ -190,27 +217,48 @@ const Dashboard: React.FC = () => {
         );
       }
       setPendingAction(null);
-    } else {
+    } else if (storageLocation === 'saas') {
       await loadCredentials();
     }
   };
 
   const handleSaveCredential = async (credentialData: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!monoPassword) {
+    if (!monoPassword && storageLocation !== 'local') {
       toast.error('MonoPassword required');
       return;
     }
 
     try {
-      if (selectedCredential) {
-        await DatabaseService.updateCredential(selectedCredential.id, credentialData, monoPassword);
-        toast.success('Credential updated successfully');
+      if (storageLocation === 'local') {
+        // Handle local storage
+        if (selectedCredential) {
+          // Update existing credential
+          const updatedCredentials = LocalStorageService.updateCredential(
+            localCredentials, 
+            selectedCredential.id, 
+            credentialData
+          );
+          setLocalCredentials(updatedCredentials);
+          toast.success('Credential updated successfully');
+        } else {
+          // Add new credential
+          const updatedCredentials = LocalStorageService.addCredential(localCredentials, credentialData);
+          setLocalCredentials(updatedCredentials);
+          toast.success('Credential added successfully');
+        }
+        setHasUnsavedChanges(true);
       } else {
-        await DatabaseService.saveCredential(credentialData, monoPassword);
-        toast.success('Credential saved successfully');
+        // Handle Supabase storage
+        if (selectedCredential) {
+          await DatabaseService.updateCredential(selectedCredential.id, credentialData, monoPassword!);
+          toast.success('Credential updated successfully');
+        } else {
+          await DatabaseService.saveCredential(credentialData, monoPassword!);
+          toast.success('Credential saved successfully');
+        }
+        await loadCredentials();
       }
 
-      await loadCredentials();
       setIsAddModalOpen(false);
       setIsEditModalOpen(false);
       setSelectedCredential(null);
@@ -228,11 +276,20 @@ const Dashboard: React.FC = () => {
     if (!credentialToDelete) return;
 
     try {
-      await DatabaseService.deleteCredential(credentialToDelete.id);
-      toast.success('Credential deleted successfully');
-      
-      // Remove the deleted credential from state instead of reloading
-      setCredentials(prev => prev.filter(cred => cred.id !== credentialToDelete.id));
+      if (storageLocation === 'local') {
+        // Handle local storage
+        const updatedCredentials = LocalStorageService.deleteCredential(localCredentials, credentialToDelete.id);
+        setLocalCredentials(updatedCredentials);
+        setHasUnsavedChanges(true);
+        toast.success('Credential deleted successfully');
+      } else {
+        // Handle Supabase storage
+        await DatabaseService.deleteCredential(credentialToDelete.id);
+        toast.success('Credential deleted successfully');
+        
+        // Remove the deleted credential from state instead of reloading
+        setCredentials(prev => prev.filter(cred => cred.id !== credentialToDelete.id));
+      }
       
       setIsDeleteConfirmOpen(false);
       setCredentialToDelete(null);
@@ -241,11 +298,90 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Local file handling functions
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!LocalStorageService.validateFileFormat(file)) {
+      toast.error('Please select a valid MonoKey file (.monokey.json)');
+      return;
+    }
+
+    setSelectedLocalFile(file);
+
+    if (!monoPassword) {
+      setPendingAction({ type: 'loadLocal', file });
+      setIsMonoPasswordPromptOpen(true);
+    } else {
+      loadLocalFile(file, monoPassword);
+    }
+
+    // Clear the input
+    event.target.value = '';
+  };
+
+  const loadLocalFile = async (file: File, password: string) => {
+    setIsLoading(true);
+    try {
+      const loadedCredentials = await LocalStorageService.readLocalFile(file, password);
+      setLocalCredentials(loadedCredentials);
+      setHasUnsavedChanges(false);
+      toast.success(`Loaded ${loadedCredentials.length} credentials from ${file.name}`);
+    } catch (error: any) {
+      console.error('Load local file error:', error);
+      toast.error(error.message || 'Failed to load local file');
+      setSelectedLocalFile(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateNewFile = () => {
+    setSelectedLocalFile(null);
+    setLocalCredentials([]);
+    setHasUnsavedChanges(false);
+    toast.success('Created new local file');
+  };
+
+  const handleSaveLocalFile = () => {
+    if (!monoPassword) {
+      toast.error('MonoPassword required to save file');
+      return;
+    }
+
+    try {
+      LocalStorageService.downloadLocalFile(localCredentials, monoPassword);
+      setHasUnsavedChanges(false);
+      toast.success('File downloaded successfully');
+    } catch (error: any) {
+      toast.error('Failed to save file');
+    }
+  };
+
+  const handleStorageLocationChange = (newLocation: StorageLocation) => {
+    if (hasUnsavedChanges && storageLocation === 'local') {
+      if (!confirm('You have unsaved changes in your local file. Are you sure you want to switch storage locations?')) {
+        return;
+      }
+    }
+
+    setStorageLocation(newLocation);
+    setHasUnsavedChanges(false);
+    setSelectedLocalFile(null);
+    setLocalCredentials([]);
+
+    // If switching to Supabase and user needs MonoPassword
+    if (newLocation === 'saas' && user && !monoPassword) {
+      setIsMonoPasswordPromptOpen(true);
+    }
+  };
+
   const storageOptions = [
     { value: 'saas', label: 'Secure Cloud', icon: <Cloud className="w-4 h-4" />, description: 'Encrypted cloud storage' },
     { value: 'google-drive', label: 'Google Drive', icon: <div className="w-4 h-4 bg-red-500 rounded text-white text-xs flex items-center justify-center">G</div>, description: 'Sync with Google Drive' },
     { value: 'onedrive', label: 'OneDrive', icon: <div className="w-4 h-4 bg-blue-600 rounded text-white text-xs flex items-center justify-center">O</div>, description: 'Microsoft OneDrive' },
-    { value: 'local', label: 'Local Storage', icon: <HardDrive className="w-4 h-4" />, description: 'Browser local storage' }
+    { value: 'local', label: 'Local Storage', icon: <HardDrive className="w-4 h-4" />, description: 'Local JSON files' }
   ];
 
   // Show loading if auth is still loading
@@ -289,7 +425,7 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center space-x-2">
                 <Shield className="w-5 h-5 text-green-500" />
                 <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {credentials.length} credentials secured
+                  {getCurrentCredentials().length} credentials secured
                 </span>
               </div>
               <Button
@@ -300,16 +436,18 @@ const Dashboard: React.FC = () => {
               >
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
-              <Button
-                onClick={loadCredentials}
-                variant="outline"
-                size="sm"
-                isLoading={isLoading}
-                className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : ''}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
+              {storageLocation === 'saas' && (
+                <Button
+                  onClick={loadCredentials}
+                  variant="outline"
+                  size="sm"
+                  isLoading={isLoading}
+                  className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : ''}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -324,7 +462,7 @@ const Dashboard: React.FC = () => {
             {storageOptions.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setStorageLocation(option.value as StorageLocation)}
+                onClick={() => handleStorageLocationChange(option.value as StorageLocation)}
                 className={`p-4 rounded-lg border-2 transition-all text-left ${
                   storageLocation === option.value
                     ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
@@ -339,6 +477,63 @@ const Dashboard: React.FC = () => {
               </button>
             ))}
           </div>
+
+          {/* Local Storage Controls */}
+          {storageLocation === 'local' && (
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="file"
+                    accept=".json,.monokey.json"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="file-input"
+                  />
+                  <label
+                    htmlFor="file-input"
+                    className={`flex items-center px-4 py-2 border rounded-lg cursor-pointer transition-colors ${
+                      isDark 
+                        ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <FolderOpen className="w-4 h-4 mr-2" />
+                    Select Existing File
+                  </label>
+                  <Button
+                    variant="outline"
+                    onClick={handleCreateNewFile}
+                    className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : ''}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Create New File
+                  </Button>
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  {selectedLocalFile && (
+                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      File: {selectedLocalFile.name}
+                    </span>
+                  )}
+                  {hasUnsavedChanges && (
+                    <span className="text-sm text-yellow-600 dark:text-yellow-400">
+                      • Unsaved changes
+                    </span>
+                  )}
+                  <Button
+                    onClick={handleSaveLocalFile}
+                    disabled={localCredentials.length === 0 || !monoPassword}
+                    className="flex items-center"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Save File
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -480,7 +675,9 @@ const Dashboard: React.FC = () => {
             <Shield className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
             <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>No credentials found</h3>
             <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-              {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first credential'}
+              {searchTerm ? 'Try adjusting your search terms' : 
+               storageLocation === 'local' ? 'Select a file or create a new one to get started' :
+               'Get started by adding your first credential'}
             </p>
             {!searchTerm && (
               <Button onClick={() => setIsAddModalOpen(true)}>
