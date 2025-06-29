@@ -11,7 +11,7 @@ interface AuthContextType extends AuthState {
   verifyMonoPassword: (monoPassword: string) => boolean;
   setMonoPassword: (password: string) => void;
   monoPassword: string | null;
-  clearAuthData: () => void;
+  clearAuthData: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
 
-  const clearAuthData = () => {
+  const clearAuthData = async () => {
     console.log('Clearing auth data...');
     
     // Reset state first
@@ -41,12 +41,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
     setMonoPasswordState(null);
     
-    // Clear storage
+    // Use Supabase's sign out to properly clear session data
     try {
-      localStorage.clear();
-      sessionStorage.clear();
+      await supabase.auth.signOut();
     } catch (error) {
-      console.error('Error clearing storage:', error);
+      console.error('Error during sign out:', error);
     }
   };
 
@@ -382,8 +381,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Sign out error:', error);
       }
       
-      // Clear storage
-      clearAuthData();
       console.log('Sign out completed');
     } catch (error) {
       console.error('Sign out failed:', error);
