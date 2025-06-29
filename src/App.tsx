@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -39,6 +39,17 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const AppContent: React.FC = () => {
+  // Clear any stale data on app load
+  useEffect(() => {
+    // Clear any cached authentication state if needed
+    const clearStaleData = () => {
+      // This helps ensure fresh authentication state
+      localStorage.removeItem('sb-auth-token');
+    };
+    
+    clearStaleData();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors">
       <Header />

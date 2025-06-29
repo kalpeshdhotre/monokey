@@ -59,31 +59,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const userProfile = await fetchUserProfile(session.user);
-        setUser(userProfile);
-        setIsAuthenticated(!!userProfile);
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+          if (mounted) {
+            setUser(null);
+            setIsAuthenticated(false);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (session?.user && mounted) {
+          const userProfile = await fetchUserProfile(session.user);
+          setUser(userProfile);
+          setIsAuthenticated(!!userProfile);
+        } else if (mounted) {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
-      setIsLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (session?.user) {
-          const userProfile = await fetchUserProfile(session.user);
-          setUser(userProfile);
-          setIsAuthenticated(!!userProfile);
-        } else {
+        if (!mounted) return;
+
+        try {
+          if (session?.user) {
+            const userProfile = await fetchUserProfile(session.user);
+            setUser(userProfile);
+            setIsAuthenticated(!!userProfile);
+          } else {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
           setUser(null);
           setIsAuthenticated(false);
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
         
         if (event === 'SIGNED_OUT') {
           setMonoPasswordState(null);
@@ -91,7 +127,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
