@@ -358,10 +358,16 @@ const Landing: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="text-center"
+              className="text-center relative"
             >
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 relative">
                 <Smartphone className="w-8 h-8" />
+                {/* Coming Soon Badge for MFA */}
+                <div className="absolute -top-2 -right-2">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-lg">
+                    Soon
+                  </span>
+                </div>
               </div>
               <h3 className="text-xl font-semibold mb-3">Multi-Factor Auth</h3>
               <p className="text-blue-100 dark:text-blue-200">
