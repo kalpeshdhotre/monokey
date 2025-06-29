@@ -3,6 +3,8 @@ import { Credential } from '../types';
 
 export interface LocalFileData {
   version: string;
+  userId: string; // Add user ID for ownership verification
+  userEmail: string; // Add user email for additional verification
   credentials: Array<{
     id: string;
     accountName: string;
@@ -15,6 +17,7 @@ export interface LocalFileData {
     createdAt: string;
     lastModified: string;
     totalCredentials: number;
+    fileOwner: string; // Display name of file owner
   };
 }
 
@@ -23,9 +26,9 @@ export class LocalStorageService {
   private static readonly FILE_EXTENSION = '.monokey.json';
 
   /**
-   * Read and decrypt a local JSON file
+   * Read and decrypt a local JSON file with ownership verification
    */
-  static async readLocalFile(file: File, monoPassword: string): Promise<Credential[]> {
+  static async readLocalFile(file: File, monoPassword: string, currentUserId: string, currentUserEmail: string): Promise<Credential[]> {
     try {
       const fileContent = await this.readFileContent(file);
       const fileData: LocalFileData = JSON.parse(fileContent);
@@ -33,6 +36,19 @@ export class LocalStorageService {
       // Validate file format
       if (!fileData.version || !fileData.credentials || !Array.isArray(fileData.credentials)) {
         throw new Error('Invalid MonoKey file format');
+      }
+
+      // Verify file ownership
+      if (!fileData.userId || !fileData.userEmail) {
+        throw new Error('This file was created with an older version of MonoKey and cannot be verified for ownership. Please create a new file.');
+      }
+
+      if (fileData.userId !== currentUserId) {
+        throw new Error(`This file belongs to another user (${fileData.userEmail}). You can only access files created with your account.`);
+      }
+
+      if (fileData.userEmail !== currentUserEmail) {
+        throw new Error(`This file was created with a different email address (${fileData.userEmail}). Please use the correct account.`);
       }
 
       // Decrypt credentials
@@ -62,7 +78,10 @@ export class LocalStorageService {
 
       return credentials;
     } catch (error: any) {
-      if (error.message.includes('Invalid MonoKey file format')) {
+      if (error.message.includes('Invalid MonoKey file format') || 
+          error.message.includes('belongs to another user') ||
+          error.message.includes('different email address') ||
+          error.message.includes('older version')) {
         throw error;
       }
       throw new Error('Failed to read or decrypt file. Please check your MonoKey and try again.');
@@ -70,9 +89,15 @@ export class LocalStorageService {
   }
 
   /**
-   * Encrypt and prepare credentials for local file save
+   * Encrypt and prepare credentials for local file save with ownership info
    */
-  static prepareLocalFileData(credentials: Credential[], monoPassword: string): LocalFileData {
+  static prepareLocalFileData(
+    credentials: Credential[], 
+    monoPassword: string, 
+    userId: string, 
+    userEmail: string, 
+    userName: string
+  ): LocalFileData {
     const encryptedCredentials = credentials.map(credential => {
       // Encrypt sensitive data
       const sensitiveData = {
@@ -97,21 +122,31 @@ export class LocalStorageService {
 
     return {
       version: this.FILE_VERSION,
+      userId: userId,
+      userEmail: userEmail,
       credentials: encryptedCredentials,
       metadata: {
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
-        totalCredentials: credentials.length
+        totalCredentials: credentials.length,
+        fileOwner: userName
       }
     };
   }
 
   /**
-   * Download encrypted credentials as JSON file
+   * Download encrypted credentials as JSON file with ownership verification
    */
-  static downloadLocalFile(credentials: Credential[], monoPassword: string, filename?: string): void {
+  static downloadLocalFile(
+    credentials: Credential[], 
+    monoPassword: string, 
+    userId: string, 
+    userEmail: string, 
+    userName: string, 
+    filename?: string
+  ): void {
     try {
-      const fileData = this.prepareLocalFileData(credentials, monoPassword);
+      const fileData = this.prepareLocalFileData(credentials, monoPassword, userId, userEmail, userName);
       const jsonString = JSON.stringify(fileData, null, 2);
       
       const blob = new Blob([jsonString], { type: 'application/json' });
@@ -186,6 +221,55 @@ export class LocalStorageService {
   }
 
   /**
+   * Verify file ownership without decrypting (quick check)
+   */
+  static async verifyFileOwnership(file: File, currentUserId: string, currentUserEmail: string): Promise<{
+    isValid: boolean;
+    error?: string;
+    fileOwner?: string;
+  }> {
+    try {
+      const fileContent = await this.readFileContent(file);
+      const fileData: LocalFileData = JSON.parse(fileContent);
+
+      // Check if file has ownership information
+      if (!fileData.userId || !fileData.userEmail) {
+        return {
+          isValid: false,
+          error: 'This file was created with an older version of MonoKey and cannot be verified for ownership.'
+        };
+      }
+
+      // Check ownership
+      if (fileData.userId !== currentUserId) {
+        return {
+          isValid: false,
+          error: `This file belongs to another user.`,
+          fileOwner: fileData.userEmail
+        };
+      }
+
+      if (fileData.userEmail !== currentUserEmail) {
+        return {
+          isValid: false,
+          error: `This file was created with a different email address.`,
+          fileOwner: fileData.userEmail
+        };
+      }
+
+      return {
+        isValid: true,
+        fileOwner: fileData.metadata?.fileOwner || fileData.userEmail
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        error: 'Invalid file format or corrupted file.'
+      };
+    }
+  }
+
+  /**
    * Read file content as text
    */
   private static readFileContent(file: File): Promise<string> {
@@ -206,16 +290,19 @@ export class LocalStorageService {
   }
 
   /**
-   * Create an empty local file structure
+   * Create an empty local file structure with ownership info
    */
-  static createEmptyFileData(): LocalFileData {
+  static createEmptyFileData(userId: string, userEmail: string, userName: string): LocalFileData {
     return {
       version: this.FILE_VERSION,
+      userId: userId,
+      userEmail: userEmail,
       credentials: [],
       metadata: {
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
-        totalCredentials: 0
+        totalCredentials: 0,
+        fileOwner: userName
       }
     };
   }

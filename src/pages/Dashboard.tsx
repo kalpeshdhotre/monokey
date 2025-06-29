@@ -20,7 +20,8 @@ import {
   Download,
   FileText,
   FolderOpen,
-  X
+  X,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -44,6 +45,7 @@ const Dashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [storageLocation, setStorageLocation] = useState<StorageLocation>('saas');
   const [selectedLocalFile, setSelectedLocalFile] = useState<File | null>(null);
+  const [fileOwnerInfo, setFileOwnerInfo] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMonoPasswordPromptOpen, setIsMonoPasswordPromptOpen] = useState(false);
@@ -300,7 +302,7 @@ const Dashboard: React.FC = () => {
   };
 
   // Local file handling functions
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -309,18 +311,54 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    // Prompt for MonoKey to decrypt the file
-    setPendingAction({ type: 'loadLocal', file });
-    setIsMonoPasswordPromptOpen(true);
+    if (!user) {
+      toast.error('User authentication required');
+      return;
+    }
+
+    // First verify file ownership without decrypting
+    setIsLoading(true);
+    try {
+      const ownershipCheck = await LocalStorageService.verifyFileOwnership(file, user.id, user.email);
+      
+      if (!ownershipCheck.isValid) {
+        toast.error(ownershipCheck.error || 'File ownership verification failed');
+        if (ownershipCheck.fileOwner) {
+          toast.error(`File belongs to: ${ownershipCheck.fileOwner}`, { duration: 6000 });
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // File ownership verified, now prompt for MonoKey to decrypt
+      setFileOwnerInfo(ownershipCheck.fileOwner || user.email);
+      setPendingAction({ type: 'loadLocal', file });
+      setIsMonoPasswordPromptOpen(true);
+    } catch (error: any) {
+      toast.error('Failed to verify file ownership');
+      console.error('File ownership verification error:', error);
+    } finally {
+      setIsLoading(false);
+    }
 
     // Clear the input
     event.target.value = '';
   };
 
   const loadLocalFile = async (file: File, password: string) => {
+    if (!user) {
+      toast.error('User authentication required');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const loadedCredentials = await LocalStorageService.readLocalFile(file, password);
+      const loadedCredentials = await LocalStorageService.readLocalFile(
+        file, 
+        password, 
+        user.id, 
+        user.email
+      );
       setLocalCredentials(loadedCredentials);
       setSelectedLocalFile(file);
       setHasUnsavedChanges(false);
@@ -329,6 +367,7 @@ const Dashboard: React.FC = () => {
       console.error('Load local file error:', error);
       toast.error(error.message || 'Failed to load local file');
       setSelectedLocalFile(null);
+      setFileOwnerInfo(null);
     } finally {
       setIsLoading(false);
     }
@@ -341,14 +380,26 @@ const Dashboard: React.FC = () => {
       return;
     }
 
+    if (!user) {
+      toast.error('User authentication required');
+      return;
+    }
+
     try {
-      // Create empty file and trigger download
-      LocalStorageService.downloadLocalFile([], monoPassword);
+      // Create empty file and trigger download with ownership info
+      LocalStorageService.downloadLocalFile(
+        [], 
+        monoPassword, 
+        user.id, 
+        user.email, 
+        `${user.firstName} ${user.lastName}`
+      );
       
       // Reset local state for new file
       setSelectedLocalFile(null);
       setLocalCredentials([]);
       setHasUnsavedChanges(false);
+      setFileOwnerInfo(null);
       
       toast.success('New MonoKey file created and downloaded. You can now add credentials and save when ready.');
     } catch (error: any) {
@@ -362,8 +413,19 @@ const Dashboard: React.FC = () => {
       return;
     }
 
+    if (!user) {
+      toast.error('User authentication required');
+      return;
+    }
+
     try {
-      LocalStorageService.downloadLocalFile(localCredentials, monoPassword);
+      LocalStorageService.downloadLocalFile(
+        localCredentials, 
+        monoPassword, 
+        user.id, 
+        user.email, 
+        `${user.firstName} ${user.lastName}`
+      );
       setHasUnsavedChanges(false);
       toast.success('File downloaded successfully');
     } catch (error: any) {
@@ -381,6 +443,7 @@ const Dashboard: React.FC = () => {
     setSelectedLocalFile(null);
     setLocalCredentials([]);
     setHasUnsavedChanges(false);
+    setFileOwnerInfo(null);
     toast.success('File removed from session');
   };
 
@@ -395,6 +458,7 @@ const Dashboard: React.FC = () => {
     setHasUnsavedChanges(false);
     setSelectedLocalFile(null);
     setLocalCredentials([]);
+    setFileOwnerInfo(null);
 
     // If switching to Supabase and user needs MonoPassword
     if (newLocation === 'saas' && user && !monoPassword) {
@@ -552,7 +616,7 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 {/* File Status Row */}
-                {(selectedLocalFile || hasUnsavedChanges) && (
+                {(selectedLocalFile || hasUnsavedChanges || fileOwnerInfo) && (
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center space-x-3">
                       {selectedLocalFile && (
@@ -562,6 +626,14 @@ const Dashboard: React.FC = () => {
                             {selectedLocalFile.name}
                           </span>
                         </>
+                      )}
+                      {fileOwnerInfo && (
+                        <div className="flex items-center space-x-2">
+                          <UserCheck className="w-4 h-4 text-green-500" />
+                          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            Owner: {fileOwnerInfo}
+                          </span>
+                        </div>
                       )}
                       {hasUnsavedChanges && (
                         <span className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
@@ -589,6 +661,9 @@ const Dashboard: React.FC = () => {
                     <p>
                       <strong>Local Storage:</strong> Select an existing MonoKey file to load your credentials, 
                       or create a new file to start fresh. All data is encrypted with your MonoKey and stored locally.
+                    </p>
+                    <p className="mt-2">
+                      <strong>Security:</strong> Files are protected with ownership verification - you can only access files created with your account.
                     </p>
                   </div>
                 )}
