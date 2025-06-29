@@ -850,7 +850,7 @@ const Dashboard: React.FC = () => {
                     </p>
                     <p className="mt-2">
                       <strong>In-Memory Management:</strong> When you add, edit, or delete credentials, they're stored 
-                      in memory. Click "Download File" to save them to your device when ready.
+                      in memory. Click "Download File\" to save them to your device when ready.
                     </p>
                     <p className="mt-2">
                       <strong>Security:</strong> Files are protected with ownership verification - you can only access files created with your account.
