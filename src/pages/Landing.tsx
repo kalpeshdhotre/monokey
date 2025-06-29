@@ -11,7 +11,12 @@ import {
   ArrowRight,
   Zap,
   Globe,
-  Database
+  Database,
+  HardDrive,
+  Monitor,
+  Keyboard,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import Button from '../components/UI/Button';
 
@@ -49,6 +54,62 @@ const Landing: React.FC = () => {
     }
   ];
 
+  const upcomingFeatures = [
+    {
+      icon: (
+        <div className="relative">
+          <Cloud className="w-8 h-8" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+            <Database className="w-2 h-2 text-white" />
+          </div>
+        </div>
+      ),
+      title: "Flexible Storage Options",
+      description: "Take full control of your data—store your credentials securely in your own cloud with support for Google Drive, OneDrive, and more.",
+      gradient: "from-blue-500 to-cyan-500"
+    },
+    {
+      icon: (
+        <div className="relative">
+          <Monitor className="w-8 h-8" />
+          <div className="absolute -bottom-1 -right-1 flex space-x-0.5">
+            <Wifi className="w-3 h-3 text-green-500" />
+            <WifiOff className="w-3 h-3 text-orange-500" />
+          </div>
+        </div>
+      ),
+      title: "Desktop App with Offline Access",
+      description: "Stay protected even without internet. Our upcoming desktop app securely stores your credentials locally, so you're always covered—online or off.",
+      gradient: "from-purple-500 to-pink-500"
+    },
+    {
+      icon: (
+        <div className="relative">
+          <Smartphone className="w-8 h-8" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+            <ArrowRight className="w-2 h-2 text-white" />
+          </div>
+        </div>
+      ),
+      title: "Smart Mobile App",
+      description: "Access your vault from anywhere with our mobile app. Seamlessly share credentials between mobile and desktop, even when you're not near your PC.",
+      gradient: "from-green-500 to-emerald-500"
+    },
+    {
+      icon: (
+        <div className="relative">
+          <Keyboard className="w-8 h-8" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+            <Shield className="w-2 h-2 text-white" />
+          </div>
+        </div>
+      ),
+      title: "Secure Virtual Keyboard",
+      description: "Bypass copy-paste restrictions with ease. Our virtual keyboard lets you enter credentials securely, even on sites that block Ctrl+C / Ctrl+V.",
+      gradient: "from-orange-500 to-red-500"
+    }
+  ];
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -70,11 +131,11 @@ const Landing: React.FC = () => {
                 />
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-                Meet <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">MonoKey</span>
+                Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">MonoKey</span>
               </h1>
-              <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                The secure password manager that puts you in complete control. 
-                One password, infinite possibilities, absolute security.
+              <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
+                Let MonoKey.online be your clever companion—remember just MonoKey, 
+                and this monkey handles the rest of your digital jungle access.
               </p>
             </motion.div>
 
@@ -155,6 +216,94 @@ const Landing: React.FC = () => {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Upcoming Features Section */}
+      <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+            >
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-6">
+                <Zap className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Upcoming Features
+              </h2>
+              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                We're constantly evolving MonoKey to give you even more control, 
+                flexibility, and security. Here's what's coming next.
+              </p>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {upcomingFeatures.map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.15 }}
+                viewport={{ once: true }}
+                className="relative group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl blur-xl"
+                     style={{ background: `linear-gradient(135deg, var(--tw-gradient-stops))` }}></div>
+                <div className="relative bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                  <div className="flex items-start space-x-4">
+                    <div className={`flex-shrink-0 w-16 h-16 bg-gradient-to-r ${feature.gradient} rounded-xl flex items-center justify-center text-white shadow-lg`}>
+                      {feature.icon}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Coming Soon Badge */}
+                  <div className="absolute top-4 right-4">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-800 dark:text-purple-200 border border-purple-200 dark:border-purple-700">
+                      Coming Soon
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Call to Action for Updates */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700 max-w-2xl mx-auto">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Stay Updated
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Be the first to know when these exciting features launch. 
+                Join MonoKey today and get notified about all updates.
+              </p>
+              <Link to="/register">
+                <Button size="lg" className="px-8 py-3">
+                  Join MonoKey Now
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
 
