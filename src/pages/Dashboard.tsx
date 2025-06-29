@@ -53,8 +53,10 @@ const Dashboard: React.FC = () => {
   const [isMonoPasswordPromptOpen, setIsMonoPasswordPromptOpen] = useState(false);
   const [isMonoPasswordSetupOpen, setIsMonoPasswordSetupOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
   const [credentialToDelete, setCredentialToDelete] = useState<Credential | null>(null);
+  const [nextStorageLocation, setNextStorageLocation] = useState<StorageLocation | null>(null);
   const [pendingAction, setPendingAction] = useState<{ 
     type: 'view' | 'copy' | 'load' | 'loadLocal', 
     field?: string, 
@@ -313,6 +315,43 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Helper function to finalize storage location switch
+  const finalizeStorageSwitch = (newLocation: StorageLocation) => {
+    setStorageLocation(newLocation);
+    setHasUnsavedChanges(false);
+    setSelectedLocalFile(null);
+    setLocalFileName('');
+    setLocalCredentials([]);
+    setIsLocalFileActive(false);
+    setFileOwnerInfo(null);
+
+    // If switching to Supabase and user needs MonoPassword
+    if (newLocation === 'saas' && user && !monoPassword) {
+      setIsMonoPasswordPromptOpen(true);
+    }
+  };
+
+  // Handle confirmation to discard changes and switch storage
+  const handleConfirmDiscardAndSwitch = () => {
+    if (nextStorageLocation) {
+      finalizeStorageSwitch(nextStorageLocation);
+      setIsDiscardConfirmOpen(false);
+      setNextStorageLocation(null);
+      toast.success(`Switched to ${getStorageDisplayName(nextStorageLocation)}`);
+    }
+  };
+
+  // Get display name for storage location
+  const getStorageDisplayName = (location: StorageLocation): string => {
+    switch (location) {
+      case 'saas': return 'Secure Cloud';
+      case 'google-drive': return 'Google Drive';
+      case 'onedrive': return 'OneDrive';
+      case 'local': return 'Local Storage';
+      default: return location;
+    }
+  };
+
   // Local file handling functions
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -461,24 +500,16 @@ const Dashboard: React.FC = () => {
   };
 
   const handleStorageLocationChange = (newLocation: StorageLocation) => {
-    if (hasUnsavedChanges && storageLocation === 'local') {
-      if (!confirm('You have unsaved changes in your local file. Are you sure you want to switch storage locations?')) {
-        return;
-      }
+    // Check if switching from local storage with unsaved changes
+    if (storageLocation === 'local' && hasUnsavedChanges && newLocation !== 'local') {
+      // Show confirmation modal instead of direct confirm dialog
+      setNextStorageLocation(newLocation);
+      setIsDiscardConfirmOpen(true);
+      return;
     }
 
-    setStorageLocation(newLocation);
-    setHasUnsavedChanges(false);
-    setSelectedLocalFile(null);
-    setLocalFileName('');
-    setLocalCredentials([]);
-    setIsLocalFileActive(false);
-    setFileOwnerInfo(null);
-
-    // If switching to Supabase and user needs MonoPassword
-    if (newLocation === 'saas' && user && !monoPassword) {
-      setIsMonoPasswordPromptOpen(true);
-    }
+    // Direct switch if no unsaved changes or not switching from local
+    finalizeStorageSwitch(newLocation);
   };
 
   const storageOptions = [
@@ -884,6 +915,55 @@ const Dashboard: React.FC = () => {
               className="flex-1"
             >
               Delete Credential
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Storage Switch Confirmation Modal */}
+      <Modal 
+        isOpen={isDiscardConfirmOpen} 
+        onClose={() => {
+          setIsDiscardConfirmOpen(false);
+          setNextStorageLocation(null);
+        }} 
+        title="Switch Storage Location"
+      >
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Database className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Switch to {nextStorageLocation ? getStorageDisplayName(nextStorageLocation) : 'Online Storage'}?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              You have unsaved changes in your current local file. Switching storage locations will discard these changes.
+            </p>
+          </div>
+
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              <strong>Note:</strong> If you want to keep your local changes, download the file first before switching.
+            </p>
+          </div>
+
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDiscardConfirmOpen(false);
+                setNextStorageLocation(null);
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmDiscardAndSwitch}
+              className="flex-1"
+            >
+              Switch Anyway
             </Button>
           </div>
         </div>
