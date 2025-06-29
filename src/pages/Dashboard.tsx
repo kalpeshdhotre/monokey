@@ -21,7 +21,8 @@ import {
   FileText,
   FolderOpen,
   X,
-  UserCheck
+  UserCheck,
+  Save
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -45,6 +46,7 @@ const Dashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [storageLocation, setStorageLocation] = useState<StorageLocation>('saas');
   const [selectedLocalFile, setSelectedLocalFile] = useState<File | null>(null);
+  const [localFileName, setLocalFileName] = useState<string>('');
   const [fileOwnerInfo, setFileOwnerInfo] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -66,6 +68,7 @@ const Dashboard: React.FC = () => {
   const [confirmMonoPassword, setConfirmMonoPassword] = useState('');
   const [isSettingUpPassword, setIsSettingUpPassword] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isLocalFileActive, setIsLocalFileActive] = useState(false);
 
   console.log('Dashboard render - user:', user?.email, 'authLoading:', authLoading, 'monoPassword:', !!monoPassword);
 
@@ -106,6 +109,16 @@ const Dashboard: React.FC = () => {
       loadCredentials();
     }
   }, [user, monoPassword, authLoading, storageLocation]);
+
+  // Auto-save local file when credentials change
+  useEffect(() => {
+    if (storageLocation === 'local' && isLocalFileActive && localCredentials.length > 0 && monoPassword && user) {
+      // Auto-save to memory (update the file data in memory)
+      // Don't trigger download automatically
+      setHasUnsavedChanges(true);
+      console.log('Local credentials updated, marking as unsaved');
+    }
+  }, [localCredentials, storageLocation, isLocalFileActive, monoPassword, user]);
 
   const loadCredentials = async () => {
     if (storageLocation === 'local') {
@@ -249,7 +262,7 @@ const Dashboard: React.FC = () => {
           setLocalCredentials(updatedCredentials);
           toast.success('Credential added successfully');
         }
-        setHasUnsavedChanges(true);
+        // Don't set unsaved changes here - let the useEffect handle it
       } else {
         // Handle Supabase storage
         if (selectedCredential) {
@@ -283,7 +296,6 @@ const Dashboard: React.FC = () => {
         // Handle local storage
         const updatedCredentials = LocalStorageService.deleteCredential(localCredentials, credentialToDelete.id);
         setLocalCredentials(updatedCredentials);
-        setHasUnsavedChanges(true);
         toast.success('Credential deleted successfully');
       } else {
         // Handle Supabase storage
@@ -361,20 +373,23 @@ const Dashboard: React.FC = () => {
       );
       setLocalCredentials(loadedCredentials);
       setSelectedLocalFile(file);
+      setLocalFileName(file.name);
+      setIsLocalFileActive(true);
       setHasUnsavedChanges(false);
       toast.success(`Loaded ${loadedCredentials.length} credentials from ${file.name}`);
     } catch (error: any) {
       console.error('Load local file error:', error);
       toast.error(error.message || 'Failed to load local file');
       setSelectedLocalFile(null);
+      setLocalFileName('');
       setFileOwnerInfo(null);
+      setIsLocalFileActive(false);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCreateNewFile = () => {
-    // Ask user to save the file location immediately
     if (!monoPassword) {
       toast.error('MonoPassword required to create new file');
       return;
@@ -385,26 +400,15 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    try {
-      // Create empty file and trigger download with ownership info
-      LocalStorageService.downloadLocalFile(
-        [], 
-        monoPassword, 
-        user.id, 
-        user.email, 
-        `${user.firstName} ${user.lastName}`
-      );
-      
-      // Reset local state for new file
-      setSelectedLocalFile(null);
-      setLocalCredentials([]);
-      setHasUnsavedChanges(false);
-      setFileOwnerInfo(null);
-      
-      toast.success('New MonoKey file created and downloaded. You can now add credentials and save when ready.');
-    } catch (error: any) {
-      toast.error('Failed to create new file');
-    }
+    // Create a new empty local file session (don't download immediately)
+    setSelectedLocalFile(null);
+    setLocalCredentials([]);
+    setLocalFileName('New MonoKey File');
+    setIsLocalFileActive(true);
+    setHasUnsavedChanges(false);
+    setFileOwnerInfo(`${user.firstName} ${user.lastName}`);
+    
+    toast.success('New MonoKey file session created. Add credentials and save when ready.');
   };
 
   const handleSaveLocalFile = () => {
@@ -419,15 +423,22 @@ const Dashboard: React.FC = () => {
     }
 
     try {
+      // Generate filename based on current state
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = selectedLocalFile 
+        ? selectedLocalFile.name 
+        : `monokey-credentials-${timestamp}.monokey.json`;
+
       LocalStorageService.downloadLocalFile(
         localCredentials, 
         monoPassword, 
         user.id, 
         user.email, 
-        `${user.firstName} ${user.lastName}`
+        `${user.firstName} ${user.lastName}`,
+        filename
       );
       setHasUnsavedChanges(false);
-      toast.success('File downloaded successfully');
+      toast.success('File saved successfully');
     } catch (error: any) {
       toast.error('Failed to save file');
     }
@@ -441,7 +452,9 @@ const Dashboard: React.FC = () => {
     }
     
     setSelectedLocalFile(null);
+    setLocalFileName('');
     setLocalCredentials([]);
+    setIsLocalFileActive(false);
     setHasUnsavedChanges(false);
     setFileOwnerInfo(null);
     toast.success('File removed from session');
@@ -457,7 +470,9 @@ const Dashboard: React.FC = () => {
     setStorageLocation(newLocation);
     setHasUnsavedChanges(false);
     setSelectedLocalFile(null);
+    setLocalFileName('');
     setLocalCredentials([]);
+    setIsLocalFileActive(false);
     setFileOwnerInfo(null);
 
     // If switching to Supabase and user needs MonoPassword
@@ -580,13 +595,16 @@ const Dashboard: React.FC = () => {
                       onChange={handleFileSelect}
                       className="hidden"
                       id="file-input"
+                      disabled={isLocalFileActive}
                     />
                     <label
                       htmlFor="file-input"
-                      className={`flex items-center px-4 py-2 border rounded-lg cursor-pointer transition-colors ${
-                        isDark 
-                          ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      className={`flex items-center px-4 py-2 border rounded-lg transition-colors ${
+                        isLocalFileActive
+                          ? 'opacity-50 cursor-not-allowed border-gray-300 text-gray-400'
+                          : isDark 
+                            ? 'border-gray-600 text-gray-300 hover:bg-gray-700 cursor-pointer' 
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer'
                       }`}
                     >
                       <FolderOpen className="w-4 h-4 mr-2" />
@@ -595,8 +613,10 @@ const Dashboard: React.FC = () => {
                     <Button
                       variant="outline"
                       onClick={handleCreateNewFile}
-                      disabled={!monoPassword}
-                      className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : ''}
+                      disabled={!monoPassword || isLocalFileActive}
+                      className={`${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : ''} ${
+                        (!monoPassword || isLocalFileActive) ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       Create New File
@@ -604,29 +624,31 @@ const Dashboard: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-4">
+                    {hasUnsavedChanges && (
+                      <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400">
+                        <Save className="w-4 h-4" />
+                        <span className="text-sm font-medium">Auto-saved in memory</span>
+                      </div>
+                    )}
                     <Button
                       onClick={handleSaveLocalFile}
-                      disabled={localCredentials.length === 0 || !monoPassword}
+                      disabled={!isLocalFileActive || !monoPassword}
                       className="flex items-center"
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Save File
+                      Download File
                     </Button>
                   </div>
                 </div>
 
                 {/* File Status Row */}
-                {(selectedLocalFile || hasUnsavedChanges || fileOwnerInfo) && (
+                {(isLocalFileActive || fileOwnerInfo) && (
                   <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center space-x-3">
-                      {selectedLocalFile && (
-                        <>
-                          <FileText className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            {selectedLocalFile.name}
-                          </span>
-                        </>
-                      )}
+                      <FileText className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {localFileName || 'Active File Session'}
+                      </span>
                       {fileOwnerInfo && (
                         <div className="flex items-center space-x-2">
                           <UserCheck className="w-4 h-4 text-green-500" />
@@ -637,30 +659,32 @@ const Dashboard: React.FC = () => {
                       )}
                       {hasUnsavedChanges && (
                         <span className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
-                          • Unsaved changes
+                          • {localCredentials.length} credentials in memory
                         </span>
                       )}
                     </div>
-                    {selectedLocalFile && (
-                      <button
-                        onClick={handleRemoveSelectedFile}
-                        className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors ${
-                          isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                        title="Remove file from session"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      onClick={handleRemoveSelectedFile}
+                      className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors ${
+                        isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                      title="Remove file from session"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
 
                 {/* Help Text */}
-                {storageLocation === 'local' && !selectedLocalFile && localCredentials.length === 0 && (
+                {storageLocation === 'local' && !isLocalFileActive && (
                   <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                     <p>
                       <strong>Local Storage:</strong> Select an existing MonoKey file to load your credentials, 
                       or create a new file to start fresh. All data is encrypted with your MonoKey and stored locally.
+                    </p>
+                    <p className="mt-2">
+                      <strong>Auto-Save:</strong> When you add or modify credentials, they're automatically saved in memory. 
+                      Click "Download File" to save them to your device.
                     </p>
                     <p className="mt-2">
                       <strong>Security:</strong> Files are protected with ownership verification - you can only access files created with your account.
@@ -693,6 +717,7 @@ const Dashboard: React.FC = () => {
           <div className="flex space-x-3">
             <Button
               onClick={() => setIsAddModalOpen(true)}
+              disabled={storageLocation === 'local' && !isLocalFileActive}
               className="flex items-center"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -815,7 +840,7 @@ const Dashboard: React.FC = () => {
                storageLocation === 'local' ? 'Select a file or create a new one to get started' :
                'Get started by adding your first credential'}
             </p>
-            {!searchTerm && (
+            {!searchTerm && (storageLocation !== 'local' || isLocalFileActive) && (
               <Button onClick={() => setIsAddModalOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Your First Credential
