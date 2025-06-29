@@ -19,7 +19,8 @@ import {
   Upload,
   Download,
   FileText,
-  FolderOpen
+  FolderOpen,
+  X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -308,14 +309,9 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    setSelectedLocalFile(file);
-
-    if (!monoPassword) {
-      setPendingAction({ type: 'loadLocal', file });
-      setIsMonoPasswordPromptOpen(true);
-    } else {
-      loadLocalFile(file, monoPassword);
-    }
+    // Prompt for MonoKey to decrypt the file
+    setPendingAction({ type: 'loadLocal', file });
+    setIsMonoPasswordPromptOpen(true);
 
     // Clear the input
     event.target.value = '';
@@ -326,6 +322,7 @@ const Dashboard: React.FC = () => {
     try {
       const loadedCredentials = await LocalStorageService.readLocalFile(file, password);
       setLocalCredentials(loadedCredentials);
+      setSelectedLocalFile(file);
       setHasUnsavedChanges(false);
       toast.success(`Loaded ${loadedCredentials.length} credentials from ${file.name}`);
     } catch (error: any) {
@@ -338,10 +335,25 @@ const Dashboard: React.FC = () => {
   };
 
   const handleCreateNewFile = () => {
-    setSelectedLocalFile(null);
-    setLocalCredentials([]);
-    setHasUnsavedChanges(false);
-    toast.success('Created new local file');
+    // Ask user to save the file location immediately
+    if (!monoPassword) {
+      toast.error('MonoPassword required to create new file');
+      return;
+    }
+
+    try {
+      // Create empty file and trigger download
+      LocalStorageService.downloadLocalFile([], monoPassword);
+      
+      // Reset local state for new file
+      setSelectedLocalFile(null);
+      setLocalCredentials([]);
+      setHasUnsavedChanges(false);
+      
+      toast.success('New MonoKey file created and downloaded. You can now add credentials and save when ready.');
+    } catch (error: any) {
+      toast.error('Failed to create new file');
+    }
   };
 
   const handleSaveLocalFile = () => {
@@ -357,6 +369,19 @@ const Dashboard: React.FC = () => {
     } catch (error: any) {
       toast.error('Failed to save file');
     }
+  };
+
+  const handleRemoveSelectedFile = () => {
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes. Are you sure you want to remove this file?')) {
+        return;
+      }
+    }
+    
+    setSelectedLocalFile(null);
+    setLocalCredentials([]);
+    setHasUnsavedChanges(false);
+    toast.success('File removed from session');
   };
 
   const handleStorageLocationChange = (newLocation: StorageLocation) => {
@@ -481,56 +506,92 @@ const Dashboard: React.FC = () => {
           {/* Local Storage Controls */}
           {storageLocation === 'local' && (
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-                <div className="flex items-center space-x-4">
-                  <input
-                    type="file"
-                    accept=".json,.monokey.json"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    id="file-input"
-                  />
-                  <label
-                    htmlFor="file-input"
-                    className={`flex items-center px-4 py-2 border rounded-lg cursor-pointer transition-colors ${
-                      isDark 
-                        ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <FolderOpen className="w-4 h-4 mr-2" />
-                    Select Existing File
-                  </label>
-                  <Button
-                    variant="outline"
-                    onClick={handleCreateNewFile}
-                    className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : ''}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Create New File
-                  </Button>
+              <div className="flex flex-col space-y-4">
+                {/* File Selection Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="file"
+                      accept=".json,.monokey.json"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="file-input"
+                    />
+                    <label
+                      htmlFor="file-input"
+                      className={`flex items-center px-4 py-2 border rounded-lg cursor-pointer transition-colors ${
+                        isDark 
+                          ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <FolderOpen className="w-4 h-4 mr-2" />
+                      Select Existing File
+                    </label>
+                    <Button
+                      variant="outline"
+                      onClick={handleCreateNewFile}
+                      disabled={!monoPassword}
+                      className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : ''}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Create New File
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      onClick={handleSaveLocalFile}
+                      disabled={localCredentials.length === 0 || !monoPassword}
+                      className="flex items-center"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Save File
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-4">
-                  {selectedLocalFile && (
-                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      File: {selectedLocalFile.name}
-                    </span>
-                  )}
-                  {hasUnsavedChanges && (
-                    <span className="text-sm text-yellow-600 dark:text-yellow-400">
-                      • Unsaved changes
-                    </span>
-                  )}
-                  <Button
-                    onClick={handleSaveLocalFile}
-                    disabled={localCredentials.length === 0 || !monoPassword}
-                    className="flex items-center"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Save File
-                  </Button>
-                </div>
+                {/* File Status Row */}
+                {(selectedLocalFile || hasUnsavedChanges) && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      {selectedLocalFile && (
+                        <>
+                          <FileText className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {selectedLocalFile.name}
+                          </span>
+                        </>
+                      )}
+                      {hasUnsavedChanges && (
+                        <span className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+                          • Unsaved changes
+                        </span>
+                      )}
+                    </div>
+                    {selectedLocalFile && (
+                      <button
+                        onClick={handleRemoveSelectedFile}
+                        className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors ${
+                          isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                        title="Remove file from session"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Help Text */}
+                {storageLocation === 'local' && !selectedLocalFile && localCredentials.length === 0 && (
+                  <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <p>
+                      <strong>Local Storage:</strong> Select an existing MonoKey file to load your credentials, 
+                      or create a new file to start fresh. All data is encrypted with your MonoKey and stored locally.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
