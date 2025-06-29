@@ -59,7 +59,7 @@ const AppContent: React.FC = () => {
 
   console.log('AppContent - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user?.email);
 
-  // Show loading spinner during initial auth check
+  // Show loading spinner during initial auth check with timeout
   if (isLoading) {
     return <LoadingSpinner />;
   }

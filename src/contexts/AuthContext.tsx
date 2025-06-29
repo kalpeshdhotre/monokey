@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 import { AuthState, User } from '../types';
@@ -30,6 +30,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [monoPassword, setMonoPasswordState] = useState<string | null>(null);
+  const initializationRef = useRef(false);
+  const authStateChangeRef = useRef(false);
 
   const clearAuthData = () => {
     console.log('Clearing auth data...');
@@ -124,11 +126,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let mounted = true;
 
     const initializeAuth = async () => {
+      // Prevent multiple initializations
+      if (initializationRef.current) {
+        console.log('Auth already initializing, skipping...');
+        return;
+      }
+      
+      initializationRef.current = true;
+      
       try {
         console.log('Initializing auth...');
         
-        // Get current session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Get current session with timeout
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session fetch timeout')), 10000)
+        );
+        
+        const { data: { session }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
         
         if (error) {
           console.error('Session error:', error);
@@ -165,17 +183,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } finally {
         if (mounted) {
           setIsLoading(false);
+          initializationRef.current = false;
         }
       }
     };
 
     initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes with debouncing
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
 
+        // Prevent handling auth state changes during initialization
+        if (initializationRef.current) {
+          console.log('Skipping auth state change during initialization');
+          return;
+        }
+
+        // Debounce auth state changes
+        if (authStateChangeRef.current) {
+          console.log('Auth state change already in progress, skipping...');
+          return;
+        }
+
+        authStateChangeRef.current = true;
         console.log('Auth state change:', event, session?.user?.email || 'no user');
 
         try {
@@ -235,6 +267,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsAuthenticated(false);
             setIsLoading(false);
           }
+        } finally {
+          authStateChangeRef.current = false;
         }
       }
     );
@@ -242,8 +276,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      initializationRef.current = false;
+      authStateChangeRef.current = false;
     };
-  }, [user?.id]); // Add user.id as dependency to prevent unnecessary re-fetches
+  }, []); // Remove user.id dependency to prevent re-initialization
 
   const signIn = async (email: string, password: string) => {
     console.log('Signing in user:', email);
@@ -257,6 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Sign in error:', error);
+        setIsLoading(false);
         throw error;
       }
 
@@ -296,10 +333,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (authError) {
         console.error('Sign up error:', authError);
+        setIsLoading(false);
         throw authError;
       }
 
       if (!authData.user) {
+        setIsLoading(false);
         throw new Error('Failed to create user account');
       }
 
@@ -315,6 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         console.log('Sign up completed successfully');
       } else {
+        setIsLoading(false);
         throw new Error('Failed to create user profile');
       }
     } catch (error) {

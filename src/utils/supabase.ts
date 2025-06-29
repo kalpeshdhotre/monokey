@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 
-// Create Supabase client with enhanced session management
+// Create Supabase client with enhanced session management and timeout handling
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -34,16 +34,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         }
       }
     }
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'monokey-app'
+    }
   }
 });
 
+// Enhanced auth service with better error handling and timeouts
 export const authService = {
   async signUp(email: string, password: string) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password
       });
+      
+      clearTimeout(timeoutId);
       
       if (error) throw error;
       return data;
@@ -55,10 +66,15 @@ export const authService = {
 
   async signIn(email: string, password: string) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
+      
+      clearTimeout(timeoutId);
       
       if (error) throw error;
       return data;
@@ -70,7 +86,13 @@ export const authService = {
 
   async signOut() {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const { error } = await supabase.auth.signOut();
+      
+      clearTimeout(timeoutId);
+      
       if (error) throw error;
     } catch (error) {
       console.error('Sign out error:', error);
@@ -80,7 +102,13 @@ export const authService = {
 
   async getCurrentUser() {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const { data: { user }, error } = await supabase.auth.getUser();
+      
+      clearTimeout(timeoutId);
+      
       if (error) throw error;
       return user;
     } catch (error) {
@@ -91,7 +119,13 @@ export const authService = {
 
   async getCurrentSession() {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const { data: { session }, error } = await supabase.auth.getSession();
+      
+      clearTimeout(timeoutId);
+      
       if (error) throw error;
       return session;
     } catch (error) {
@@ -136,7 +170,13 @@ export const authService = {
 
   async refreshSession() {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
       const { data, error } = await supabase.auth.refreshSession();
+      
+      clearTimeout(timeoutId);
+      
       if (error) throw error;
       return data;
     } catch (error) {
