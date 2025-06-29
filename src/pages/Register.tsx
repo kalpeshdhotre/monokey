@@ -39,7 +39,7 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Create account without MonoPassword - will be set up in dashboard
+      // Create account without MonoKey - will be set up in dashboard
       await signUp(data.email, data.password, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -140,7 +140,7 @@ const Register: React.FC = () => {
 
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mt-4">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Next Step:</strong> After creating your account, you'll set up your MonoPassword 
+                  <strong>Next Step:</strong> After creating your account, you'll set up your MonoKey 
                   (master key) to secure your credentials in the dashboard.
                 </p>
               </div>

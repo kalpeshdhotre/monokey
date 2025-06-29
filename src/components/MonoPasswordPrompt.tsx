@@ -6,19 +6,19 @@ import Button from './UI/Button';
 import { Shield, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface MonoPasswordPromptProps {
+interface MonoKeyPromptProps {
   isOpen: boolean;
   onClose: () => void;
-  onVerified: (password: string) => void;
+  onVerified: (key: string) => void;
 }
 
-const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
+const MonoKeyPrompt: React.FC<MonoKeyPromptProps> = ({
   isOpen,
   onClose,
   onVerified
 }) => {
-  const { verifyMonoPassword } = useAuth();
-  const [password, setPassword] = useState('');
+  const { verifyMonoKey } = useAuth();
+  const [key, setKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
 
@@ -27,14 +27,14 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
     setIsLoading(true);
 
     try {
-      if (verifyMonoPassword(password)) {
-        onVerified(password);
-        setPassword('');
+      if (verifyMonoKey(key)) {
+        onVerified(key);
+        setKey('');
         setAttempts(0);
-        toast.success('MonoPassword verified');
+        toast.success('MonoKey verified');
       } else {
         setAttempts(prev => prev + 1);
-        toast.error('Invalid MonoPassword');
+        toast.error('Invalid MonoKey');
         
         if (attempts >= 2) {
           toast.error('Too many failed attempts. Please try again later.');
@@ -49,13 +49,13 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
   };
 
   const handleClose = () => {
-    setPassword('');
+    setKey('');
     setAttempts(0);
     onClose();
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Verify MonoPassword">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Verify MonoKey">
       <div className="space-y-6">
         <div className="text-center">
           <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -65,7 +65,7 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
             Security Verification Required
           </h3>
           <p className="text-gray-600 dark:text-gray-300">
-            Please enter your MonoPassword to access this sensitive information.
+            Please enter your MonoKey to access this sensitive information.
           </p>
         </div>
 
@@ -74,7 +74,7 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
             <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
             <div>
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                Invalid MonoPassword. {3 - attempts} attempts remaining.
+                Invalid MonoKey. {3 - attempts} attempts remaining.
               </p>
             </div>
           </div>
@@ -82,11 +82,11 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="MonoPassword"
+            label="MonoKey"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your MonoPassword"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder="Enter your MonoKey"
             showPasswordToggle
             autoFocus
             required
@@ -104,7 +104,7 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
             <Button
               type="submit"
               isLoading={isLoading}
-              disabled={!password.trim()}
+              disabled={!key.trim()}
               className="flex-1"
             >
               Verify
@@ -114,7 +114,7 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
 
         <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
           <p className="text-xs text-gray-600 dark:text-gray-300">
-            <strong>Security Note:</strong> Your MonoPassword is never stored or transmitted. 
+            <strong>Security Note:</strong> Your MonoKey is never stored or transmitted. 
             It's used locally to decrypt your data.
           </p>
         </div>
@@ -123,4 +123,4 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
   );
 };
 
-export default MonoPasswordPrompt;
+export default MonoKeyPrompt;

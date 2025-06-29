@@ -23,19 +23,19 @@ import Button from '../components/UI/Button';
 import Input from '../components/UI/Input';
 import Modal from '../components/UI/Modal';
 import CredentialForm from '../components/CredentialForm';
-import MonoPasswordPrompt from '../components/MonoPasswordPrompt';
+import MonoKeyPrompt from '../components/MonoPasswordPrompt';
 import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
-  const { user, monoPassword, setMonoPassword, verifyMonoPassword, isLoading: authLoading, refreshUser } = useAuth();
+  const { user, monoKey, setMonoKey, verifyMonoKey, isLoading: authLoading, refreshUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isMonoPasswordPromptOpen, setIsMonoPasswordPromptOpen] = useState(false);
-  const [isMonoPasswordSetupOpen, setIsMonoPasswordSetupOpen] = useState(false);
+  const [isMonoKeyPromptOpen, setIsMonoKeyPromptOpen] = useState(false);
+  const [isMonoKeySetupOpen, setIsMonoKeySetupOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
   const [credentialToDelete, setCredentialToDelete] = useState<Credential | null>(null);
@@ -47,11 +47,11 @@ const Dashboard: React.FC = () => {
   } | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
-  const [monoPasswordSetup, setMonoPasswordSetup] = useState('');
-  const [confirmMonoPassword, setConfirmMonoPassword] = useState('');
-  const [isSettingUpPassword, setIsSettingUpPassword] = useState(false);
+  const [monoKeySetup, setMonoKeySetup] = useState('');
+  const [confirmMonoKey, setConfirmMonoKey] = useState('');
+  const [isSettingUpKey, setIsSettingUpKey] = useState(false);
 
-  console.log('Dashboard render - user:', user?.email, 'authLoading:', authLoading, 'monoPassword:', !!monoPassword);
+  console.log('Dashboard render - user:', user?.email, 'authLoading:', authLoading, 'monoKey:', !!monoKey);
 
   useEffect(() => {
     const filtered = credentials.filter(cred =>
@@ -62,7 +62,7 @@ const Dashboard: React.FC = () => {
   }, [searchTerm, credentials]);
 
   useEffect(() => {
-    console.log('Dashboard useEffect - user:', user?.email, 'monoPassword:', !!monoPassword);
+    console.log('Dashboard useEffect - user:', user?.email, 'monoKey:', !!monoKey);
     
     // Don't proceed if auth is still loading
     if (authLoading) {
@@ -70,31 +70,31 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    // Check if user needs to set up MonoPassword
+    // Check if user needs to set up MonoKey
     if (user && (!user.monoPasswordHash || user.monoPasswordHash === '')) {
-      console.log('User needs to set up MonoPassword');
-      setIsMonoPasswordSetupOpen(true);
-    } else if (user && !monoPassword) {
-      // User has MonoPassword set up but not entered yet
-      console.log('User needs to enter MonoPassword');
-      setIsMonoPasswordPromptOpen(true);
-    } else if (user && monoPassword) {
-      // MonoPassword is available, load credentials from Supabase
+      console.log('User needs to set up MonoKey');
+      setIsMonoKeySetupOpen(true);
+    } else if (user && !monoKey) {
+      // User has MonoKey set up but not entered yet
+      console.log('User needs to enter MonoKey');
+      setIsMonoKeyPromptOpen(true);
+    } else if (user && monoKey) {
+      // MonoKey is available, load credentials from Supabase
       console.log('Loading credentials from Supabase...');
       loadCredentials();
     }
-  }, [user, monoPassword, authLoading]);
+  }, [user, monoKey, authLoading]);
 
   const loadCredentials = async () => {
-    if (!monoPassword) {
-      console.log('No monoPassword available for loading credentials');
+    if (!monoKey) {
+      console.log('No monoKey available for loading credentials');
       return;
     }
 
     setIsLoading(true);
     try {
       console.log('Loading credentials from database...');
-      const creds = await DatabaseService.getCredentials(monoPassword);
+      const creds = await DatabaseService.getCredentials(monoKey);
       console.log('Loaded', creds.length, 'credentials');
       setCredentials(creds);
     } catch (error: any) {
@@ -105,53 +105,53 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleMonoPasswordSetup = async () => {
-    if (monoPasswordSetup !== confirmMonoPassword) {
-      toast.error('MonoPasswords do not match');
+  const handleMonoKeySetup = async () => {
+    if (monoKeySetup !== confirmMonoKey) {
+      toast.error('MonoKeys do not match');
       return;
     }
 
-    if (monoPasswordSetup.length < 8) {
-      toast.error('MonoPassword must be at least 8 characters');
+    if (monoKeySetup.length < 8) {
+      toast.error('MonoKey must be at least 8 characters');
       return;
     }
 
-    setIsSettingUpPassword(true);
+    setIsSettingUpKey(true);
     
     try {
-      console.log('Setting up MonoPassword...');
-      const monoPasswordHash = CryptoUtils.hashPassword(monoPasswordSetup);
+      console.log('Setting up MonoKey...');
+      const monoKeyHash = CryptoUtils.hashPassword(monoKeySetup);
       
       // Update the hash in database
-      await DatabaseService.updateMonoPasswordHash(monoPasswordHash);
+      await DatabaseService.updateMonoPasswordHash(monoKeyHash);
 
       // Refresh user data to get updated profile
       await refreshUser();
 
-      // Set the MonoPassword in context
-      setMonoPassword(monoPasswordSetup);
+      // Set the MonoKey in context
+      setMonoKey(monoKeySetup);
       
       // Close the setup modal
-      setIsMonoPasswordSetupOpen(false);
+      setIsMonoKeySetupOpen(false);
       
       // Clear the form
-      setMonoPasswordSetup('');
-      setConfirmMonoPassword('');
+      setMonoKeySetup('');
+      setConfirmMonoKey('');
       
-      toast.success('MonoPassword set up successfully!');
-      console.log('MonoPassword setup completed');
+      toast.success('MonoKey set up successfully!');
+      console.log('MonoKey setup completed');
     } catch (error: any) {
-      console.error('MonoPassword setup error:', error);
-      toast.error('Failed to set up MonoPassword');
+      console.error('MonoKey setup error:', error);
+      toast.error('Failed to set up MonoKey');
     } finally {
-      setIsSettingUpPassword(false);
+      setIsSettingUpKey(false);
     }
   };
 
   const handleSecureAction = (type: 'view' | 'copy', field: string, value: string, credentialId?: string) => {
-    if (!monoPassword) {
+    if (!monoKey) {
       setPendingAction({ type, field, value, credentialId });
-      setIsMonoPasswordPromptOpen(true);
+      setIsMonoKeyPromptOpen(true);
       return;
     }
 
@@ -185,10 +185,10 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleMonoPasswordVerified = async (password: string) => {
-    console.log('MonoPassword verified, setting password...');
-    setMonoPassword(password);
-    setIsMonoPasswordPromptOpen(false);
+  const handleMonoKeyVerified = async (key: string) => {
+    console.log('MonoKey verified, setting key...');
+    setMonoKey(key);
+    setIsMonoKeyPromptOpen(false);
     
     if (pendingAction) {
       if (pendingAction.type === 'load') {
@@ -208,15 +208,15 @@ const Dashboard: React.FC = () => {
   };
 
   const handleSaveCredential = async (credentialData: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!monoPassword) {
-      toast.error('MonoPassword required');
+    if (!monoKey) {
+      toast.error('MonoKey required');
       return;
     }
 
     try {
       if (selectedCredential) {
         // Update existing credential
-        await DatabaseService.updateCredential(selectedCredential.id, credentialData, monoPassword);
+        await DatabaseService.updateCredential(selectedCredential.id, credentialData, monoKey);
         
         // Update the credential in state directly instead of reloading
         setCredentials(prev => prev.map(cred => 
@@ -232,7 +232,7 @@ const Dashboard: React.FC = () => {
         toast.success('Credential updated successfully');
       } else {
         // Save new credential
-        const savedCredential = await DatabaseService.saveCredential(credentialData, monoPassword);
+        const savedCredential = await DatabaseService.saveCredential(credentialData, monoKey);
         
         // Add the new credential to state directly instead of reloading
         const newCredential: Credential = {
@@ -532,11 +532,11 @@ const Dashboard: React.FC = () => {
         </div>
       </Modal>
 
-      {/* MonoPassword Setup Modal */}
+      {/* MonoKey Setup Modal */}
       <Modal 
-        isOpen={isMonoPasswordSetupOpen} 
+        isOpen={isMonoKeySetupOpen} 
         onClose={() => {}} 
-        title="Set Up Your MonoPassword"
+        title="Set Up Your MonoKey"
       >
         <div className="space-y-6">
           <div className="text-center">
@@ -547,28 +547,28 @@ const Dashboard: React.FC = () => {
               Create Your Master Key
             </h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Your MonoPassword is the master key that encrypts all your credentials. 
+              Your MonoKey is the master key that encrypts all your credentials. 
               Choose something secure that you'll remember.
             </p>
           </div>
 
           <div className="space-y-4">
             <Input
-              label="MonoPassword"
+              label="MonoKey"
               type="password"
-              value={monoPasswordSetup}
-              onChange={(e) => setMonoPasswordSetup(e.target.value)}
-              placeholder="Enter your MonoPassword"
+              value={monoKeySetup}
+              onChange={(e) => setMonoKeySetup(e.target.value)}
+              placeholder="Enter your MonoKey"
               showPasswordToggle
               required
             />
 
             <Input
-              label="Confirm MonoPassword"
+              label="Confirm MonoKey"
               type="password"
-              value={confirmMonoPassword}
-              onChange={(e) => setConfirmMonoPassword(e.target.value)}
-              placeholder="Confirm your MonoPassword"
+              value={confirmMonoKey}
+              onChange={(e) => setConfirmMonoKey(e.target.value)}
+              placeholder="Confirm your MonoKey"
               showPasswordToggle
               required
             />
@@ -576,27 +576,27 @@ const Dashboard: React.FC = () => {
 
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
             <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              <strong>Important:</strong> Your MonoPassword cannot be recovered if lost. 
+              <strong>Important:</strong> Your MonoKey cannot be recovered if lost. 
               Please store it securely and remember it.
             </p>
           </div>
 
           <Button
-            onClick={handleMonoPasswordSetup}
+            onClick={handleMonoKeySetup}
             className="w-full"
-            disabled={!monoPasswordSetup || !confirmMonoPassword || isSettingUpPassword}
-            isLoading={isSettingUpPassword}
+            disabled={!monoKeySetup || !confirmMonoKey || isSettingUpKey}
+            isLoading={isSettingUpKey}
           >
-            Set Up MonoPassword
+            Set Up MonoKey
           </Button>
         </div>
       </Modal>
 
       {/* Other Modals */}
-      <MonoPasswordPrompt
-        isOpen={isMonoPasswordPromptOpen}
-        onClose={() => setIsMonoPasswordPromptOpen(false)}
-        onVerified={handleMonoPasswordVerified}
+      <MonoKeyPrompt
+        isOpen={isMonoKeyPromptOpen}
+        onClose={() => setIsMonoKeyPromptOpen(false)}
+        onVerified={handleMonoKeyVerified}
       />
 
       <CredentialForm

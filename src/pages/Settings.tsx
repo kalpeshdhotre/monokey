@@ -21,20 +21,20 @@ import Modal from '../components/UI/Modal';
 import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
-  const { user, verifyMonoPassword } = useAuth();
+  const { user, verifyMonoKey } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isChangeKeyOpen, setIsChangeKeyOpen] = useState(false);
   const [userSettings, setUserSettings] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     phoneNumber: user?.phoneNumber || ''
   });
-  const [passwordChange, setPasswordChange] = useState({
-    currentMonoPassword: '',
-    newMonoPassword: '',
-    confirmNewMonoPassword: ''
+  const [keyChange, setKeyChange] = useState({
+    currentMonoKey: '',
+    newMonoKey: '',
+    confirmNewMonoKey: ''
   });
 
   useEffect(() => {
@@ -65,35 +65,35 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleChangeMonoPassword = async () => {
-    if (passwordChange.newMonoPassword !== passwordChange.confirmNewMonoPassword) {
-      toast.error('New MonoPasswords do not match');
+  const handleChangeMonoKey = async () => {
+    if (keyChange.newMonoKey !== keyChange.confirmNewMonoKey) {
+      toast.error('New MonoKeys do not match');
       return;
     }
 
-    if (passwordChange.newMonoPassword.length < 8) {
-      toast.error('MonoPassword must be at least 8 characters');
+    if (keyChange.newMonoKey.length < 8) {
+      toast.error('MonoKey must be at least 8 characters');
       return;
     }
 
-    if (!verifyMonoPassword(passwordChange.currentMonoPassword)) {
-      toast.error('Current MonoPassword is incorrect');
+    if (!verifyMonoKey(keyChange.currentMonoKey)) {
+      toast.error('Current MonoKey is incorrect');
       return;
     }
 
     try {
-      const newMonoPasswordHash = CryptoUtils.hashPassword(passwordChange.newMonoPassword);
-      await DatabaseService.updateMonoPasswordHash(newMonoPasswordHash);
+      const newMonoKeyHash = CryptoUtils.hashPassword(keyChange.newMonoKey);
+      await DatabaseService.updateMonoPasswordHash(newMonoKeyHash);
       
-      toast.success('MonoPassword updated successfully');
-      setIsChangePasswordOpen(false);
-      setPasswordChange({
-        currentMonoPassword: '',
-        newMonoPassword: '',
-        confirmNewMonoPassword: ''
+      toast.success('MonoKey updated successfully');
+      setIsChangeKeyOpen(false);
+      setKeyChange({
+        currentMonoKey: '',
+        newMonoKey: '',
+        confirmNewMonoKey: ''
       });
     } catch (error: any) {
-      toast.error('Failed to update MonoPassword');
+      toast.error('Failed to update MonoKey');
     }
   };
 
@@ -217,7 +217,7 @@ const Settings: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <Key className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                     <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                      MonoPassword Set
+                      MonoKey Set
                     </span>
                   </div>
                   <span className="text-sm text-green-600 dark:text-green-400">✓</span>
@@ -246,11 +246,11 @@ const Settings: React.FC = () => {
               <div className="space-y-3">
                 <Button
                   variant="outline"
-                  onClick={() => setIsChangePasswordOpen(true)}
+                  onClick={() => setIsChangeKeyOpen(true)}
                   className={`w-full justify-start ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : ''}`}
                 >
                   <Key className="w-4 h-4 mr-2" />
-                  Change MonoPassword
+                  Change MonoKey
                 </Button>
 
                 <Button
@@ -292,11 +292,11 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Change MonoPassword Modal */}
+      {/* Change MonoKey Modal */}
       <Modal
-        isOpen={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-        title="Change MonoPassword"
+        isOpen={isChangeKeyOpen}
+        onClose={() => setIsChangeKeyOpen(false)}
+        title="Change MonoKey"
       >
         <div className="space-y-6">
           <div className="text-center">
@@ -304,40 +304,40 @@ const Settings: React.FC = () => {
               <Key className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Update Your MonoPassword
+              Update Your MonoKey
             </h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Enter your current MonoPassword and choose a new one.
+              Enter your current MonoKey and choose a new one.
             </p>
           </div>
 
           <div className="space-y-4">
             <Input
-              label="Current MonoPassword"
+              label="Current MonoKey"
               type="password"
-              value={passwordChange.currentMonoPassword}
-              onChange={(e) => setPasswordChange(prev => ({ ...prev, currentMonoPassword: e.target.value }))}
-              placeholder="Enter current MonoPassword"
+              value={keyChange.currentMonoKey}
+              onChange={(e) => setKeyChange(prev => ({ ...prev, currentMonoKey: e.target.value }))}
+              placeholder="Enter current MonoKey"
               showPasswordToggle
               required
             />
 
             <Input
-              label="New MonoPassword"
+              label="New MonoKey"
               type="password"
-              value={passwordChange.newMonoPassword}
-              onChange={(e) => setPasswordChange(prev => ({ ...prev, newMonoPassword: e.target.value }))}
-              placeholder="Enter new MonoPassword"
+              value={keyChange.newMonoKey}
+              onChange={(e) => setKeyChange(prev => ({ ...prev, newMonoKey: e.target.value }))}
+              placeholder="Enter new MonoKey"
               showPasswordToggle
               required
             />
 
             <Input
-              label="Confirm New MonoPassword"
+              label="Confirm New MonoKey"
               type="password"
-              value={passwordChange.confirmNewMonoPassword}
-              onChange={(e) => setPasswordChange(prev => ({ ...prev, confirmNewMonoPassword: e.target.value }))}
-              placeholder="Confirm new MonoPassword"
+              value={keyChange.confirmNewMonoKey}
+              onChange={(e) => setKeyChange(prev => ({ ...prev, confirmNewMonoKey: e.target.value }))}
+              placeholder="Confirm new MonoKey"
               showPasswordToggle
               required
             />
@@ -345,25 +345,25 @@ const Settings: React.FC = () => {
 
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
             <p className="text-sm text-red-800 dark:text-red-200">
-              <strong>Warning:</strong> Changing your MonoPassword will require you to re-enter it 
-              to access your credentials. Make sure you remember the new password.
+              <strong>Warning:</strong> Changing your MonoKey will require you to re-enter it 
+              to access your credentials. Make sure you remember the new key.
             </p>
           </div>
 
           <div className="flex space-x-3">
             <Button
               variant="outline"
-              onClick={() => setIsChangePasswordOpen(false)}
+              onClick={() => setIsChangeKeyOpen(false)}
               className="flex-1"
             >
               Cancel
             </Button>
             <Button
-              onClick={handleChangeMonoPassword}
-              disabled={!passwordChange.currentMonoPassword || !passwordChange.newMonoPassword || !passwordChange.confirmNewMonoPassword}
+              onClick={handleChangeMonoKey}
+              disabled={!keyChange.currentMonoKey || !keyChange.newMonoKey || !keyChange.confirmNewMonoKey}
               className="flex-1"
             >
-              Update MonoPassword
+              Update MonoKey
             </Button>
           </div>
         </div>

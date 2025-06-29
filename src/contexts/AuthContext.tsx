@@ -8,9 +8,9 @@ interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, userData: any) => Promise<void>;
   signOut: () => Promise<void>;
-  verifyMonoPassword: (monoPassword: string) => boolean;
-  setMonoPassword: (password: string) => void;
-  monoPassword: string | null;
+  verifyMonoKey: (monoKey: string) => boolean;
+  setMonoKey: (password: string) => void;
+  monoKey: string | null;
   clearAuthData: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [monoPassword, setMonoPasswordState] = useState<string | null>(null);
+  const [monoKey, setMonoKeyState] = useState<string | null>(null);
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
 
@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Reset state first
     setUser(null);
     setIsAuthenticated(false);
-    setMonoPasswordState(null);
+    setMonoKeyState(null);
     
     // Use Supabase's sign out to properly clear session data
     try {
@@ -213,7 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('User signed out');
             setUser(null);
             setIsAuthenticated(false);
-            setMonoPasswordState(null);
+            setMonoKeyState(null);
             setIsLoading(false);
             return;
           }
@@ -371,7 +371,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear state first
       setUser(null);
       setIsAuthenticated(false);
-      setMonoPasswordState(null);
+      setMonoKeyState(null);
       
       // Then sign out from Supabase
       const { error } = await supabase.auth.signOut();
@@ -387,15 +387,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const verifyMonoPassword = (inputPassword: string): boolean => {
+  const verifyMonoKey = (inputKey: string): boolean => {
     if (!user?.monoPasswordHash) return false;
     
-    const inputHash = CryptoJS.SHA256(inputPassword).toString();
+    const inputHash = CryptoJS.SHA256(inputKey).toString();
     return inputHash === user.monoPasswordHash;
   };
 
-  const setMonoPassword = (password: string) => {
-    setMonoPasswordState(password);
+  const setMonoKey = (key: string) => {
+    setMonoKeyState(key);
   };
 
   const value = {
@@ -405,9 +405,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signUp,
     signOut,
-    verifyMonoPassword,
-    setMonoPassword,
-    monoPassword,
+    verifyMonoKey,
+    setMonoKey,
+    monoKey,
     clearAuthData,
     refreshUser
   };

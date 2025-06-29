@@ -3,7 +3,7 @@ import { CryptoUtils } from './crypto';
 import { Credential, EncryptedCredential } from '../types';
 
 export class DatabaseService {
-  static async saveCredential(credential: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>, monoPassword: string): Promise<{ id: string; createdAt: string; updatedAt: string }> {
+  static async saveCredential(credential: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>, monoKey: string): Promise<{ id: string; createdAt: string; updatedAt: string }> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -16,7 +16,7 @@ export class DatabaseService {
       twoFactorCodes: credential.twoFactorCodes
     };
 
-    const encryptedData = CryptoUtils.encrypt(JSON.stringify(sensitiveData), monoPassword);
+    const encryptedData = CryptoUtils.encrypt(JSON.stringify(sensitiveData), monoKey);
 
     const { data, error } = await supabase
       .from('credentials')
@@ -38,7 +38,7 @@ export class DatabaseService {
     };
   }
 
-  static async getCredentials(monoPassword: string): Promise<Credential[]> {
+  static async getCredentials(monoKey: string): Promise<Credential[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -54,7 +54,7 @@ export class DatabaseService {
     const credentials: Credential[] = [];
     for (const encCred of encryptedCredentials || []) {
       try {
-        const decryptedData = CryptoUtils.decrypt(encCred.encrypted_data, monoPassword);
+        const decryptedData = CryptoUtils.decrypt(encCred.encrypted_data, monoKey);
         const sensitiveData = JSON.parse(decryptedData);
 
         credentials.push({
@@ -78,7 +78,7 @@ export class DatabaseService {
     return credentials;
   }
 
-  static async updateCredential(id: string, credential: Partial<Credential>, monoPassword: string): Promise<void> {
+  static async updateCredential(id: string, credential: Partial<Credential>, monoKey: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -93,7 +93,7 @@ export class DatabaseService {
     if (fetchError) throw fetchError;
 
     // Decrypt current data
-    const currentDecrypted = JSON.parse(CryptoUtils.decrypt(currentCred.encrypted_data, monoPassword));
+    const currentDecrypted = JSON.parse(CryptoUtils.decrypt(currentCred.encrypted_data, monoKey));
 
     // Merge with updates
     const updatedData = {
@@ -104,7 +104,7 @@ export class DatabaseService {
       twoFactorCodes: credential.twoFactorCodes || currentDecrypted.twoFactorCodes
     };
 
-    const encryptedData = CryptoUtils.encrypt(JSON.stringify(updatedData), monoPassword);
+    const encryptedData = CryptoUtils.encrypt(JSON.stringify(updatedData), monoKey);
 
     const updateFields: any = { encrypted_data: encryptedData };
     if (credential.accountName) updateFields.account_name = credential.accountName;
@@ -153,13 +153,13 @@ export class DatabaseService {
     if (error) throw error;
   }
 
-  static async updateMonoPasswordHash(monoPasswordHash: string): Promise<void> {
+  static async updateMonoPasswordHash(monoKeyHash: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     const { error } = await supabase
       .from('user_profiles')
-      .update({ mono_password_hash: monoPasswordHash })
+      .update({ mono_password_hash: monoKeyHash })
       .eq('id', user.id);
 
     if (error) throw error;
