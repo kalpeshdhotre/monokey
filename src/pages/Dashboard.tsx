@@ -432,21 +432,27 @@ const Dashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
-                          <span className={`text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>
-                            {visiblePasswords.has(credential.id) ? credential.password : '••••••••'}
-                          </span>
-                          <button
-                            onClick={() => handleSecureAction('view', 'Password', credential.password, credential.id)}
-                            className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
-                          >
-                            {visiblePasswords.has(credential.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                          <button
-                            onClick={() => handleSecureAction('copy', 'Password', credential.password)}
-                            className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
+                          <div className="min-w-0 flex-1">
+                            <span className={`text-sm font-mono block truncate ${isDark ? 'text-gray-300' : 'text-gray-900'}`} style={{ minWidth: '120px', maxWidth: '200px' }}>
+                              {visiblePasswords.has(credential.id) ? credential.password : '••••••••••••'}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1 flex-shrink-0">
+                            <button
+                              onClick={() => handleSecureAction('view', 'Password', credential.password, credential.id)}
+                              className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
+                              title={visiblePasswords.has(credential.id) ? 'Hide password' : 'Show password'}
+                            >
+                              {visiblePasswords.has(credential.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                            <button
+                              onClick={() => handleSecureAction('copy', 'Password', credential.password)}
+                              className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
+                              title="Copy password"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -457,12 +463,14 @@ const Dashboard: React.FC = () => {
                               setIsEditModalOpen(true);
                             }}
                             className="text-blue-600 hover:text-blue-900 transition-colors"
+                            title="Edit credential"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteCredential(credential)}
                             className="text-red-600 hover:text-red-900 transition-colors"
+                            title="Delete credential"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
