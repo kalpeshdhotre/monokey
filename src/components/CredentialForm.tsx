@@ -54,7 +54,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
       recoveryEmail: '',
       recoveryMobile: '',
       twoFactorCodes: '',
-      icon: '📧'
+      icon: '🔐'
     }
   });
 
@@ -72,7 +72,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
           recoveryEmail: credential.recoveryEmail || '',
           recoveryMobile: credential.recoveryMobile || '',
           twoFactorCodes: credential.twoFactorCodes || '',
-          icon: credential.icon || '📧'
+          icon: credential.icon || '🔐'
         });
         setCustomIcon(credential.icon?.startsWith('data:') ? credential.icon : null);
       } else {
@@ -84,7 +84,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
           recoveryEmail: '',
           recoveryMobile: '',
           twoFactorCodes: '',
-          icon: '📧'
+          icon: '🔐'
         });
         setCustomIcon(null);
       }
@@ -136,25 +136,6 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
     }
   };
 
-  // Predefined service icons
-  const serviceIcons = [
-    { name: 'Gmail', icon: '📧', color: 'bg-red-100 dark:bg-red-900/20' },
-    { name: 'Hotmail', icon: '📮', color: 'bg-blue-100 dark:bg-blue-900/20' },
-    { name: 'Yahoo', icon: '💌', color: 'bg-purple-100 dark:bg-purple-900/20' },
-    { name: 'Amazon', icon: '📦', color: 'bg-orange-100 dark:bg-orange-900/20' },
-    { name: 'Flipkart', icon: '🛒', color: 'bg-yellow-100 dark:bg-yellow-900/20' },
-    { name: 'GitHub', icon: '🐙', color: 'bg-gray-100 dark:bg-gray-700' },
-    { name: 'YouTube', icon: '📺', color: 'bg-red-100 dark:bg-red-900/20' },
-    { name: 'Spotify', icon: '🎵', color: 'bg-green-100 dark:bg-green-900/20' },
-    { name: 'Netflix', icon: '🎬', color: 'bg-red-100 dark:bg-red-900/20' },
-    { name: 'Udemy', icon: '🎓', color: 'bg-purple-100 dark:bg-purple-900/20' },
-    { name: 'eBay', icon: '🏪', color: 'bg-blue-100 dark:bg-blue-900/20' },
-    { name: 'Instagram', icon: '📸', color: 'bg-pink-100 dark:bg-pink-900/20' },
-    { name: 'Facebook', icon: '👥', color: 'bg-blue-100 dark:bg-blue-900/20' },
-    { name: 'Twitter/X', icon: '🐦', color: 'bg-blue-100 dark:bg-blue-900/20' },
-    { name: 'Default', icon: '🔐', color: 'bg-gray-100 dark:bg-gray-700' }
-  ];
-
   return (
     <>
       <Modal 
@@ -164,62 +145,37 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
         size="lg"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Icon Selection */}
+          {/* Icon Selection - Only Custom Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Service Icon
+              Service Icon (Optional)
             </label>
-            <div className="grid grid-cols-5 gap-2 mb-4">
-              {serviceIcons.map((service) => (
-                <button
-                  key={service.name}
-                  type="button"
-                  onClick={() => {
-                    setValue('icon', service.icon);
-                    setCustomIcon(null);
-                  }}
-                  className={`p-3 text-xl rounded-lg border-2 transition-all hover:scale-105 ${
-                    watch('icon') === service.icon && !customIcon
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                  } ${service.color}`}
-                  title={service.name}
-                >
-                  {service.icon}
-                </button>
-              ))}
-            </div>
-
+            
             {/* Custom Icon Upload */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Custom Icon (Optional)
+            <div className="flex items-center space-x-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleIconUpload}
+                className="hidden"
+                id="icon-upload"
+              />
+              <label
+                htmlFor="icon-upload"
+                className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Custom Icon
               </label>
-              <div className="flex items-center space-x-4">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleIconUpload}
-                  className="hidden"
-                  id="icon-upload"
-                />
-                <label
-                  htmlFor="icon-upload"
-                  className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Icon
-                </label>
-                {customIcon && (
-                  <div className="w-12 h-12 border-2 border-blue-500 rounded-lg overflow-hidden">
-                    <img src={customIcon} alt="Custom icon" className="w-full h-full object-cover" />
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Recommended: 64x64px, max 1MB
-              </p>
+              {customIcon && (
+                <div className="w-12 h-12 border-2 border-blue-500 rounded-lg overflow-hidden">
+                  <img src={customIcon} alt="Custom icon" className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Recommended: 64x64px, max 1MB. If no icon is uploaded, a default lock icon will be used.
+            </p>
           </div>
 
           {/* Account Name */}
@@ -265,7 +221,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
                 onClick={() => setIsPasswordGenOpen(true)}
                 className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                Auto Generate
+                Generate
               </Button>
             </div>
             {errors.password && (

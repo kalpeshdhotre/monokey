@@ -12,12 +12,12 @@ import {
   RefreshCw,
   Sun,
   Moon,
-  AlertTriangle,
-  Save
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { DatabaseService } from '../utils/database';
+import { CryptoUtils } from '../utils/crypto';
 import { Credential } from '../types';
 import Button from '../components/UI/Button';
 import Input from '../components/UI/Input';
@@ -163,14 +163,25 @@ const Dashboard: React.FC = () => {
       navigator.clipboard.writeText(value);
       toast.success(`${field} copied to clipboard`);
     } else if (type === 'view' && credentialId) {
-      setVisiblePasswords(prev => new Set([...prev, credentialId]));
-      setTimeout(() => {
-        setVisiblePasswords(prev => {
-          const newSet = new Set(prev);
+      // Toggle password visibility
+      setVisiblePasswords(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(credentialId)) {
+          // If already visible, hide it
           newSet.delete(credentialId);
-          return newSet;
-        });
-      }, 10000);
+        } else {
+          // If hidden, show it and set auto-hide timer
+          newSet.add(credentialId);
+          setTimeout(() => {
+            setVisiblePasswords(current => {
+              const updatedSet = new Set(current);
+              updatedSet.delete(credentialId);
+              return updatedSet;
+            });
+          }, 10000);
+        }
+        return newSet;
+      });
     }
   };
 
