@@ -139,56 +139,14 @@ const Dashboard: React.FC = () => {
     }
   }, [user, monoPassword, authLoading, storageLocation]);
 
-  // Auto-save local file when credentials change
+  // Track changes in local credentials for unsaved changes indicator
   useEffect(() => {
-    if (storageLocation === 'local' && isLocalFileActive && localCredentials.length > 0 && monoPassword && user) {
-      // Auto-save to file immediately when credentials change
-      autoSaveLocalFile();
-    }
-  }, [localCredentials, storageLocation, isLocalFileActive, monoPassword, user]);
-
-  // Auto-save function for local files
-  const autoSaveLocalFile = async () => {
-    if (!monoPassword || !user || !isLocalFileActive) {
-      return;
-    }
-
-    try {
-      // Generate filename based on current state
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = selectedLocalFile 
-        ? selectedLocalFile.name 
-        : `monokey-credentials-${timestamp}.monokey.json`;
-
-      // Auto-download the updated file
-      LocalStorageService.downloadLocalFile(
-        localCredentials, 
-        monoPassword, 
-        user.id, 
-        user.email, 
-        `${user.firstName} ${user.lastName}`,
-        filename
-      );
-      
-      setHasUnsavedChanges(false);
-      
-      // Update storage state
-      setStorageStates(prev => ({
-        ...prev,
-        local: {
-          ...prev.local,
-          credentials: localCredentials,
-          hasUnsavedChanges: false
-        }
-      }));
-      
-      toast.success('Local file updated automatically', { duration: 2000 });
-    } catch (error: any) {
-      console.error('Auto-save failed:', error);
-      toast.error('Failed to auto-save file');
+    if (storageLocation === 'local' && isLocalFileActive) {
+      // Mark as having unsaved changes when credentials are modified
       setHasUnsavedChanges(true);
+      console.log('Local credentials updated, marking as unsaved');
     }
-  };
+  }, [localCredentials, storageLocation, isLocalFileActive]);
 
   // Save current storage state when switching
   const saveCurrentStorageState = () => {
@@ -388,7 +346,7 @@ const Dashboard: React.FC = () => {
           setLocalCredentials(updatedCredentials);
           toast.success('Credential added successfully');
         }
-        // Auto-save will be triggered by useEffect
+        // Changes will be marked as unsaved by useEffect
       } else {
         // Handle Supabase storage
         if (selectedCredential) {
@@ -423,7 +381,7 @@ const Dashboard: React.FC = () => {
         const updatedCredentials = LocalStorageService.deleteCredential(localCredentials, credentialToDelete.id);
         setLocalCredentials(updatedCredentials);
         toast.success('Credential deleted successfully');
-        // Auto-save will be triggered by useEffect
+        // Changes will be marked as unsaved by useEffect
       } else {
         // Handle Supabase storage
         await DatabaseService.deleteCredential(credentialToDelete.id);
@@ -599,7 +557,7 @@ const Dashboard: React.FC = () => {
       }
     }));
     
-    toast.success('New MonoKey file session created. Add credentials and they will be auto-saved.');
+    toast.success('New MonoKey file session created. Add credentials and save when ready.');
   };
 
   const handleSaveLocalFile = () => {
@@ -831,6 +789,12 @@ const Dashboard: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-4">
+                    {hasUnsavedChanges && (
+                      <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400">
+                        <Save className="w-4 h-4" />
+                        <span className="text-sm font-medium">Unsaved changes</span>
+                      </div>
+                    )}
                     <Button
                       onClick={handleSaveLocalFile}
                       disabled={!isLocalFileActive || !monoPassword}
@@ -858,8 +822,11 @@ const Dashboard: React.FC = () => {
                           </span>
                         </div>
                       )}
-                      <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                        • Auto-save enabled • {localCredentials.length} credentials
+                      <span className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        • {localCredentials.length} credentials
+                        {hasUnsavedChanges && (
+                          <span className="text-yellow-600 dark:text-yellow-400"> (unsaved)</span>
+                        )}
                       </span>
                     </div>
                     <button
@@ -882,8 +849,8 @@ const Dashboard: React.FC = () => {
                       or create a new file to start fresh. All data is encrypted with your MonoKey and stored locally.
                     </p>
                     <p className="mt-2">
-                      <strong>Auto-Save:</strong> When you add, edit, or delete credentials, the file is automatically 
-                      downloaded with your changes. No manual saving required!
+                      <strong>In-Memory Management:</strong> When you add, edit, or delete credentials, they're stored 
+                      in memory. Click "Download File" to save them to your device when ready.
                     </p>
                     <p className="mt-2">
                       <strong>Security:</strong> Files are protected with ownership verification - you can only access files created with your account.
