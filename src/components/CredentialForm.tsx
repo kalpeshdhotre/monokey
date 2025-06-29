@@ -60,29 +60,36 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
 
   const watchedPassword = watch('password');
 
+  // Clear form when opening for new credential or reset for editing
   useEffect(() => {
-    if (credential && isEditing) {
-      reset({
-        accountName: credential.accountName,
-        username: credential.username,
-        password: credential.password,
-        recoveryEmail: credential.recoveryEmail || '',
-        recoveryMobile: credential.recoveryMobile || '',
-        twoFactorCodes: credential.twoFactorCodes || '',
-        icon: credential.icon || '📧'
-      });
-    } else {
-      reset({
-        accountName: '',
-        username: '',
-        password: '',
-        recoveryEmail: '',
-        recoveryMobile: '',
-        twoFactorCodes: '',
-        icon: '📧'
-      });
+    if (isOpen) {
+      if (credential && isEditing) {
+        // Editing existing credential
+        reset({
+          accountName: credential.accountName,
+          username: credential.username,
+          password: credential.password,
+          recoveryEmail: credential.recoveryEmail || '',
+          recoveryMobile: credential.recoveryMobile || '',
+          twoFactorCodes: credential.twoFactorCodes || '',
+          icon: credential.icon || '📧'
+        });
+        setCustomIcon(credential.icon?.startsWith('data:') ? credential.icon : null);
+      } else {
+        // Adding new credential - clear everything
+        reset({
+          accountName: '',
+          username: '',
+          password: '',
+          recoveryEmail: '',
+          recoveryMobile: '',
+          twoFactorCodes: '',
+          icon: '📧'
+        });
+        setCustomIcon(null);
+      }
     }
-  }, [credential, isEditing, reset]);
+  }, [isOpen, credential, isEditing, reset]);
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
@@ -131,21 +138,21 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
 
   // Predefined service icons
   const serviceIcons = [
-    { name: 'Gmail', icon: '📧', color: 'bg-red-100' },
-    { name: 'Hotmail', icon: '📮', color: 'bg-blue-100' },
-    { name: 'Yahoo', icon: '💌', color: 'bg-purple-100' },
-    { name: 'Amazon', icon: '📦', color: 'bg-orange-100' },
-    { name: 'Flipkart', icon: '🛒', color: 'bg-yellow-100' },
-    { name: 'GitHub', icon: '🐙', color: 'bg-gray-100' },
-    { name: 'YouTube', icon: '📺', color: 'bg-red-100' },
-    { name: 'Spotify', icon: '🎵', color: 'bg-green-100' },
-    { name: 'Netflix', icon: '🎬', color: 'bg-red-100' },
-    { name: 'Udemy', icon: '🎓', color: 'bg-purple-100' },
-    { name: 'eBay', icon: '🏪', color: 'bg-blue-100' },
-    { name: 'Instagram', icon: '📸', color: 'bg-pink-100' },
-    { name: 'Facebook', icon: '👥', color: 'bg-blue-100' },
-    { name: 'Twitter/X', icon: '🐦', color: 'bg-blue-100' },
-    { name: 'Default', icon: '🔐', color: 'bg-gray-100' }
+    { name: 'Gmail', icon: '📧', color: 'bg-red-100 dark:bg-red-900/20' },
+    { name: 'Hotmail', icon: '📮', color: 'bg-blue-100 dark:bg-blue-900/20' },
+    { name: 'Yahoo', icon: '💌', color: 'bg-purple-100 dark:bg-purple-900/20' },
+    { name: 'Amazon', icon: '📦', color: 'bg-orange-100 dark:bg-orange-900/20' },
+    { name: 'Flipkart', icon: '🛒', color: 'bg-yellow-100 dark:bg-yellow-900/20' },
+    { name: 'GitHub', icon: '🐙', color: 'bg-gray-100 dark:bg-gray-700' },
+    { name: 'YouTube', icon: '📺', color: 'bg-red-100 dark:bg-red-900/20' },
+    { name: 'Spotify', icon: '🎵', color: 'bg-green-100 dark:bg-green-900/20' },
+    { name: 'Netflix', icon: '🎬', color: 'bg-red-100 dark:bg-red-900/20' },
+    { name: 'Udemy', icon: '🎓', color: 'bg-purple-100 dark:bg-purple-900/20' },
+    { name: 'eBay', icon: '🏪', color: 'bg-blue-100 dark:bg-blue-900/20' },
+    { name: 'Instagram', icon: '📸', color: 'bg-pink-100 dark:bg-pink-900/20' },
+    { name: 'Facebook', icon: '👥', color: 'bg-blue-100 dark:bg-blue-900/20' },
+    { name: 'Twitter/X', icon: '🐦', color: 'bg-blue-100 dark:bg-blue-900/20' },
+    { name: 'Default', icon: '🔐', color: 'bg-gray-100 dark:bg-gray-700' }
   ];
 
   return (
@@ -175,7 +182,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
                     watch('icon') === service.icon && !customIcon
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                       : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                  } ${service.color} dark:bg-gray-700`}
+                  } ${service.color}`}
                   title={service.name}
                 >
                   {service.icon}
@@ -184,7 +191,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
             </div>
 
             {/* Custom Icon Upload */}
-            <div className="border-t pt-4">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Custom Icon (Optional)
               </label>
@@ -198,7 +205,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
                 />
                 <label
                   htmlFor="icon-upload"
-                  className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Icon
@@ -256,7 +263,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
                 type="button"
                 variant="outline"
                 onClick={() => setIsPasswordGenOpen(true)}
-                className="px-4 py-2 whitespace-nowrap"
+                className="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Auto Generate
               </Button>
@@ -267,7 +274,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
           </div>
 
           {/* Optional Fields */}
-          <div className="border-t pt-4">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Recovery Information (Optional)
             </h3>
@@ -294,7 +301,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
                 <textarea
                   {...register('twoFactorCodes')}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Enter backup codes separated by commas or new lines"
                 />
               </div>
@@ -302,7 +309,7 @@ const CredentialForm: React.FC<CredentialFormProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex space-x-3 pt-4 border-t">
+          <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button
               type="button"
               variant="outline"

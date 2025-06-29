@@ -14,7 +14,8 @@ import {
   HardDrive,
   RefreshCw,
   Sun,
-  Moon
+  Moon,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -39,7 +40,9 @@ const Dashboard: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMonoPasswordPromptOpen, setIsMonoPasswordPromptOpen] = useState(false);
   const [isMonoPasswordSetupOpen, setIsMonoPasswordSetupOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
+  const [credentialToDelete, setCredentialToDelete] = useState<Credential | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: 'view' | 'copy' | 'load', field?: string, value?: string, credentialId?: string } | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
@@ -178,15 +181,25 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteCredential = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this credential?')) {
-      try {
-        await DatabaseService.deleteCredential(id);
-        await loadCredentials();
-        toast.success('Credential deleted successfully');
-      } catch (error: any) {
-        toast.error('Failed to delete credential');
-      }
+  const handleDeleteCredential = (credential: Credential) => {
+    setCredentialToDelete(credential);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteCredential = async () => {
+    if (!credentialToDelete) return;
+
+    try {
+      await DatabaseService.deleteCredential(credentialToDelete.id);
+      toast.success('Credential deleted successfully');
+      
+      // Reload credentials to refresh the dashboard
+      await loadCredentials();
+      
+      setIsDeleteConfirmOpen(false);
+      setCredentialToDelete(null);
+    } catch (error: any) {
+      toast.error('Failed to delete credential');
     }
   };
 
@@ -386,7 +399,7 @@ const Dashboard: React.FC = () => {
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteCredential(credential.id)}
+                            onClick={() => handleDeleteCredential(credential)}
                             className="text-red-600 hover:text-red-900 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -417,6 +430,45 @@ const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal 
+        isOpen={isDeleteConfirmOpen} 
+        onClose={() => setIsDeleteConfirmOpen(false)} 
+        title="Delete Credential"
+      >
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Are you sure?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              This will permanently delete the credential for{' '}
+              <strong>{credentialToDelete?.accountName}</strong>. This action cannot be undone.
+            </p>
+          </div>
+
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmDeleteCredential}
+              className="flex-1"
+            >
+              Delete Credential
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* MonoPassword Setup Modal */}
       <Modal 
