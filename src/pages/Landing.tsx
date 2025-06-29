@@ -133,10 +133,19 @@ const Landing: React.FC = () => {
               <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
                 Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">MonoKey</span>
               </h1>
-              <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
-                Let MonoKey.online be your clever companion—remember just MonoKey, 
-                and this monkey handles the rest of your digital jungle access.
-              </p>
+              
+              {/* New Bold Main Message */}
+              <div className="mb-6">
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white mb-4 leading-tight">
+                  Tired of password chaos?<br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">
+                    Let the monokey handle it.
+                  </span>
+                </h2>
+                <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed font-medium">
+                  All your secrets, one smart key - MonoKey.online keeps it simple and secure.
+                </p>
+              </div>
             </motion.div>
 
             <motion.div
