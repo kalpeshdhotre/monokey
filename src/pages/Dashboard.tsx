@@ -684,7 +684,7 @@ const Dashboard: React.FC = () => {
                     </p>
                     <p className="mt-2">
                       <strong>Auto-Save:</strong> When you add or modify credentials, they're automatically saved in memory. 
-                      Click "Download File" to save them to your device.
+                      Click "Download File\" to save them to your device.
                     </p>
                     <p className="mt-2">
                       <strong>Security:</strong> Files are protected with ownership verification - you can only access files created with your account.
