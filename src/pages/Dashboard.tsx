@@ -215,13 +215,36 @@ const Dashboard: React.FC = () => {
 
     try {
       if (selectedCredential) {
+        // Update existing credential
         await DatabaseService.updateCredential(selectedCredential.id, credentialData, monoPassword);
+        
+        // Update the credential in state directly instead of reloading
+        setCredentials(prev => prev.map(cred => 
+          cred.id === selectedCredential.id 
+            ? { 
+                ...cred, 
+                ...credentialData, 
+                updatedAt: new Date().toISOString() 
+              }
+            : cred
+        ));
+        
         toast.success('Credential updated successfully');
       } else {
-        await DatabaseService.saveCredential(credentialData, monoPassword);
+        // Save new credential
+        const savedCredential = await DatabaseService.saveCredential(credentialData, monoPassword);
+        
+        // Add the new credential to state directly instead of reloading
+        const newCredential: Credential = {
+          id: savedCredential.id,
+          ...credentialData,
+          createdAt: savedCredential.createdAt,
+          updatedAt: savedCredential.updatedAt
+        };
+        
+        setCredentials(prev => [newCredential, ...prev]);
         toast.success('Credential saved successfully');
       }
-      await loadCredentials();
 
       setIsAddModalOpen(false);
       setIsEditModalOpen(false);

@@ -3,7 +3,7 @@ import { CryptoUtils } from './crypto';
 import { Credential, EncryptedCredential } from '../types';
 
 export class DatabaseService {
-  static async saveCredential(credential: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>, monoPassword: string): Promise<void> {
+  static async saveCredential(credential: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>, monoPassword: string): Promise<{ id: string; createdAt: string; updatedAt: string }> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -18,16 +18,24 @@ export class DatabaseService {
 
     const encryptedData = CryptoUtils.encrypt(JSON.stringify(sensitiveData), monoPassword);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('credentials')
       .insert({
         user_id: user.id,
         account_name: credential.accountName,
         encrypted_data: encryptedData,
         icon: credential.icon || '🔐'
-      });
+      })
+      .select('id, created_at, updated_at')
+      .single();
 
     if (error) throw error;
+
+    return {
+      id: data.id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   }
 
   static async getCredentials(monoPassword: string): Promise<Credential[]> {
@@ -128,7 +136,6 @@ export class DatabaseService {
     firstName?: string;
     lastName?: string;
     phoneNumber?: string;
-    storageLocation?: string;
   }): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -137,7 +144,6 @@ export class DatabaseService {
     if (updates.firstName) updateFields.first_name = updates.firstName;
     if (updates.lastName) updateFields.last_name = updates.lastName;
     if (updates.phoneNumber !== undefined) updateFields.phone_number = updates.phoneNumber;
-    if (updates.storageLocation) updateFields.storage_location = updates.storageLocation;
 
     const { error } = await supabase
       .from('user_profiles')
