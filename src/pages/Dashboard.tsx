@@ -72,6 +72,33 @@ const Dashboard: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isLocalFileActive, setIsLocalFileActive] = useState(false);
 
+  // Storage state persistence - keep track of each storage type's state
+  const [storageStates, setStorageStates] = useState<{
+    local: {
+      credentials: Credential[];
+      selectedFile: File | null;
+      fileName: string;
+      fileOwnerInfo: string | null;
+      isActive: boolean;
+      hasUnsavedChanges: boolean;
+    };
+    saas: {
+      credentials: Credential[];
+    };
+  }>({
+    local: {
+      credentials: [],
+      selectedFile: null,
+      fileName: '',
+      fileOwnerInfo: null,
+      isActive: false,
+      hasUnsavedChanges: false
+    },
+    saas: {
+      credentials: []
+    }
+  });
+
   console.log('Dashboard render - user:', user?.email, 'authLoading:', authLoading, 'monoPassword:', !!monoPassword);
 
   // Get current credentials based on storage location
@@ -122,6 +149,54 @@ const Dashboard: React.FC = () => {
     }
   }, [localCredentials, storageLocation, isLocalFileActive, monoPassword, user]);
 
+  // Save current storage state when switching
+  const saveCurrentStorageState = () => {
+    if (storageLocation === 'local') {
+      setStorageStates(prev => ({
+        ...prev,
+        local: {
+          credentials: localCredentials,
+          selectedFile: selectedLocalFile,
+          fileName: localFileName,
+          fileOwnerInfo: fileOwnerInfo,
+          isActive: isLocalFileActive,
+          hasUnsavedChanges: hasUnsavedChanges
+        }
+      }));
+    } else if (storageLocation === 'saas') {
+      setStorageStates(prev => ({
+        ...prev,
+        saas: {
+          credentials: credentials
+        }
+      }));
+    }
+  };
+
+  // Restore storage state when switching back
+  const restoreStorageState = (newLocation: StorageLocation) => {
+    if (newLocation === 'local') {
+      const localState = storageStates.local;
+      setLocalCredentials(localState.credentials);
+      setSelectedLocalFile(localState.selectedFile);
+      setLocalFileName(localState.fileName);
+      setFileOwnerInfo(localState.fileOwnerInfo);
+      setIsLocalFileActive(localState.isActive);
+      setHasUnsavedChanges(localState.hasUnsavedChanges);
+    } else if (newLocation === 'saas') {
+      const saasState = storageStates.saas;
+      setCredentials(saasState.credentials);
+      
+      // If switching to Supabase and user needs MonoPassword
+      if (user && !monoPassword) {
+        setIsMonoPasswordPromptOpen(true);
+      } else if (user && monoPassword) {
+        // Reload credentials from database to ensure they're up to date
+        loadCredentials();
+      }
+    }
+  };
+
   const loadCredentials = async () => {
     if (storageLocation === 'local') {
       // For local storage, credentials are already loaded when file is selected
@@ -139,6 +214,14 @@ const Dashboard: React.FC = () => {
       const creds = await DatabaseService.getCredentials(monoPassword);
       console.log('Loaded', creds.length, 'credentials');
       setCredentials(creds);
+      
+      // Update storage state
+      setStorageStates(prev => ({
+        ...prev,
+        saas: {
+          credentials: creds
+        }
+      }));
     } catch (error: any) {
       console.error('Load credentials error:', error);
       toast.error('Failed to load credentials');
@@ -317,18 +400,19 @@ const Dashboard: React.FC = () => {
 
   // Helper function to finalize storage location switch
   const finalizeStorageSwitch = (newLocation: StorageLocation) => {
+    // Save current state before switching
+    saveCurrentStorageState();
+    
+    // Update storage location
     setStorageLocation(newLocation);
+    
+    // Restore state for new location
+    restoreStorageState(newLocation);
+    
+    // Reset temporary states
     setHasUnsavedChanges(false);
-    setSelectedLocalFile(null);
-    setLocalFileName('');
-    setLocalCredentials([]);
-    setIsLocalFileActive(false);
-    setFileOwnerInfo(null);
-
-    // If switching to Supabase and user needs MonoPassword
-    if (newLocation === 'saas' && user && !monoPassword) {
-      setIsMonoPasswordPromptOpen(true);
-    }
+    
+    toast.success(`Switched to ${getStorageDisplayName(newLocation)}`);
   };
 
   // Handle confirmation to discard changes and switch storage
@@ -337,7 +421,6 @@ const Dashboard: React.FC = () => {
       finalizeStorageSwitch(nextStorageLocation);
       setIsDiscardConfirmOpen(false);
       setNextStorageLocation(null);
-      toast.success(`Switched to ${getStorageDisplayName(nextStorageLocation)}`);
     }
   };
 
@@ -415,6 +498,20 @@ const Dashboard: React.FC = () => {
       setLocalFileName(file.name);
       setIsLocalFileActive(true);
       setHasUnsavedChanges(false);
+      
+      // Update storage state
+      setStorageStates(prev => ({
+        ...prev,
+        local: {
+          credentials: loadedCredentials,
+          selectedFile: file,
+          fileName: file.name,
+          fileOwnerInfo: fileOwnerInfo,
+          isActive: true,
+          hasUnsavedChanges: false
+        }
+      }));
+      
       toast.success(`Loaded ${loadedCredentials.length} credentials from ${file.name}`);
     } catch (error: any) {
       console.error('Load local file error:', error);
@@ -447,6 +544,19 @@ const Dashboard: React.FC = () => {
     setHasUnsavedChanges(false);
     setFileOwnerInfo(`${user.firstName} ${user.lastName}`);
     
+    // Update storage state
+    setStorageStates(prev => ({
+      ...prev,
+      local: {
+        credentials: [],
+        selectedFile: null,
+        fileName: 'New MonoKey File',
+        fileOwnerInfo: `${user.firstName} ${user.lastName}`,
+        isActive: true,
+        hasUnsavedChanges: false
+      }
+    }));
+    
     toast.success('New MonoKey file session created. Add credentials and save when ready.');
   };
 
@@ -477,6 +587,16 @@ const Dashboard: React.FC = () => {
         filename
       );
       setHasUnsavedChanges(false);
+      
+      // Update storage state
+      setStorageStates(prev => ({
+        ...prev,
+        local: {
+          ...prev.local,
+          hasUnsavedChanges: false
+        }
+      }));
+      
       toast.success('File saved successfully');
     } catch (error: any) {
       toast.error('Failed to save file');
@@ -496,6 +616,20 @@ const Dashboard: React.FC = () => {
     setIsLocalFileActive(false);
     setHasUnsavedChanges(false);
     setFileOwnerInfo(null);
+    
+    // Update storage state
+    setStorageStates(prev => ({
+      ...prev,
+      local: {
+        credentials: [],
+        selectedFile: null,
+        fileName: '',
+        fileOwnerInfo: null,
+        isActive: false,
+        hasUnsavedChanges: false
+      }
+    }));
+    
     toast.success('File removed from session');
   };
 
