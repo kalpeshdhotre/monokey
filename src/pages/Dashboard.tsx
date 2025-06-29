@@ -13,8 +13,6 @@ import {
   Cloud,
   HardDrive,
   RefreshCw,
-  Settings,
-  User,
   Sun,
   Moon
 } from 'lucide-react';
@@ -41,19 +39,12 @@ const Dashboard: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMonoPasswordPromptOpen, setIsMonoPasswordPromptOpen] = useState(false);
   const [isMonoPasswordSetupOpen, setIsMonoPasswordSetupOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: 'view' | 'copy' | 'load', field?: string, value?: string, credentialId?: string } | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [monoPasswordSetup, setMonoPasswordSetup] = useState('');
   const [confirmMonoPassword, setConfirmMonoPassword] = useState('');
-  const [userSettings, setUserSettings] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    phoneNumber: user?.phoneNumber || ''
-  });
-  const [isSettingsLoading, setIsSettingsLoading] = useState(false);
 
   useEffect(() => {
     const filtered = credentials.filter(cred =>
@@ -62,17 +53,6 @@ const Dashboard: React.FC = () => {
     );
     setFilteredCredentials(filtered);
   }, [searchTerm, credentials]);
-
-  useEffect(() => {
-    // Update user settings when user data changes
-    if (user) {
-      setUserSettings({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        phoneNumber: user.phoneNumber || ''
-      });
-    }
-  }, [user]);
 
   useEffect(() => {
     // Check if user needs to set up MonoPassword
@@ -210,22 +190,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleUpdateSettings = async () => {
-    setIsSettingsLoading(true);
-    try {
-      await DatabaseService.updateUserProfile(userSettings);
-      toast.success('Settings updated successfully');
-      setIsSettingsOpen(false);
-      
-      // Refresh user data in context
-      window.location.reload();
-    } catch (error: any) {
-      toast.error('Failed to update settings');
-    } finally {
-      setIsSettingsLoading(false);
-    }
-  };
-
   const storageOptions = [
     { value: 'saas', label: 'Secure Cloud', icon: <Cloud className="w-4 h-4" />, description: 'Encrypted cloud storage' },
     { value: 'google-drive', label: 'Google Drive', icon: <div className="w-4 h-4 bg-red-500 rounded text-white text-xs flex items-center justify-center">G</div>, description: 'Sync with Google Drive' },
@@ -271,15 +235,6 @@ const Dashboard: React.FC = () => {
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
-              </Button>
-              <Button
-                onClick={() => setIsSettingsOpen(true)}
-                variant="outline"
-                size="sm"
-                className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : ''}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
               </Button>
             </div>
           </div>
@@ -519,63 +474,6 @@ const Dashboard: React.FC = () => {
           >
             Set Up MonoPassword
           </Button>
-        </div>
-      </Modal>
-
-      {/* Settings Modal */}
-      <Modal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        title="User Settings"
-      >
-        <div className="space-y-6">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User className="w-8 h-8 text-gray-600 dark:text-gray-300" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Update Your Profile
-            </h3>
-          </div>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="First Name"
-                value={userSettings.firstName}
-                onChange={(e) => setUserSettings(prev => ({ ...prev, firstName: e.target.value }))}
-              />
-              <Input
-                label="Last Name"
-                value={userSettings.lastName}
-                onChange={(e) => setUserSettings(prev => ({ ...prev, lastName: e.target.value }))}
-              />
-            </div>
-
-            <Input
-              label="Phone Number"
-              type="tel"
-              value={userSettings.phoneNumber}
-              onChange={(e) => setUserSettings(prev => ({ ...prev, phoneNumber: e.target.value }))}
-            />
-          </div>
-
-          <div className="flex space-x-3">
-            <Button
-              variant="outline"
-              onClick={() => setIsSettingsOpen(false)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateSettings}
-              isLoading={isSettingsLoading}
-              className="flex-1"
-            >
-              Save Changes
-            </Button>
-          </div>
         </div>
       </Modal>
 

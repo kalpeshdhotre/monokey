@@ -12,6 +12,7 @@ interface AuthContextType extends AuthState {
   setMonoPassword: (password: string) => void;
   monoPassword: string | null;
   clearAuthData: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,6 +84,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error fetching user profile:', error);
       return null;
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const userProfile = await fetchUserProfile(authUser);
+        if (userProfile) {
+          setUser(userProfile);
+          setIsAuthenticated(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
     }
   };
 
@@ -239,7 +255,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     verifyMonoPassword,
     setMonoPassword,
     monoPassword,
-    clearAuthData
+    clearAuthData,
+    refreshUser
   };
 
   return (
