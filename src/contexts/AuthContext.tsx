@@ -89,16 +89,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true;
 
-    // Clear any stale authentication data on app initialization
+    // Initialize authentication state
     const initializeAuth = async () => {
       try {
-        // First, clear any potentially stale data
-        clearAuthData();
-        
-        // Small delay to ensure cleanup is complete
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Now check for valid session
+        // Get current session without clearing data
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -163,7 +157,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (event === 'SIGNED_OUT') {
           setMonoPasswordState(null);
-          clearAuthData();
         }
       }
     );

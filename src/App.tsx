@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -39,33 +39,6 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const AppContent: React.FC = () => {
-  const { clearAuthData } = useAuth();
-
-  // Clear any stale data on app load
-  useEffect(() => {
-    // Force clear authentication data on fresh app load
-    const handleAppLoad = () => {
-      // Check if this is a fresh page load (not navigation)
-      if (performance.navigation.type === performance.navigation.TYPE_RELOAD || 
-          performance.navigation.type === performance.navigation.TYPE_NAVIGATE) {
-        
-        // Clear all authentication related data
-        clearAuthData();
-        
-        // Also clear any browser caches that might interfere
-        if ('caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => {
-              caches.delete(name);
-            });
-          });
-        }
-      }
-    };
-
-    handleAppLoad();
-  }, [clearAuthData]);
-
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors">
       <Header />
