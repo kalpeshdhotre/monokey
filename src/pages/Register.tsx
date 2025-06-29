@@ -44,8 +44,7 @@ const Register: React.FC = () => {
         firstName: data.firstName,
         lastName: data.lastName,
         phoneNumber: data.phoneNumber || null,
-        monoPasswordHash: '', // Empty - will be set up later
-        storageLocation: 'saas'
+        monoPasswordHash: '' // Empty - will be set up later
       });
 
       toast.success('Account created successfully!');

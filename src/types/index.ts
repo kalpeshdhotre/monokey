@@ -4,7 +4,6 @@ export interface User {
   firstName: string;
   lastName: string;
   phoneNumber?: string;
-  storageLocation: StorageLocation;
   monoPasswordHash?: string;
   createdAt: string;
 }
@@ -30,8 +29,6 @@ export interface EncryptedCredential {
   createdAt: string;
   updatedAt: string;
 }
-
-export type StorageLocation = 'saas' | 'google-drive' | 'onedrive' | 'local';
 
 export interface AuthState {
   user: User | null;

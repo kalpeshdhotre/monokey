@@ -5,7 +5,6 @@ import {
   Shield, 
   Key, 
   Cloud, 
-  HardDrive, 
   Smartphone, 
   Lock,
   CheckCircle,
@@ -24,9 +23,9 @@ const Landing: React.FC = () => {
       description: "Remember just your MonoPassword and access all your credentials securely. No more forgotten passwords or security compromises."
     },
     {
-      icon: <Database className="w-8 h-8" />,
-      title: "Choose Your Storage Location",
-      description: "Complete transparency and control. Store your encrypted data in our secure cloud, Google Drive, OneDrive, or locally on your device."
+      icon: <Cloud className="w-8 h-8" />,
+      title: "Secure Cloud Storage",
+      description: "Your encrypted data is stored in our secure cloud infrastructure with 99.9% uptime guarantee and automatic backups."
     },
     {
       icon: <Shield className="w-8 h-8" />,
@@ -47,29 +46,6 @@ const Landing: React.FC = () => {
       icon: <Lock className="w-8 h-8" />,
       title: "Advanced Security Features",
       description: "2FA backup codes, recovery options, and secure sharing. Enterprise-grade security for everyone."
-    }
-  ];
-
-  const storageOptions = [
-    {
-      icon: <Cloud className="w-12 h-12 text-blue-500" />,
-      title: "Secure Cloud",
-      description: "Our encrypted cloud storage with 99.9% uptime guarantee"
-    },
-    {
-      icon: <HardDrive className="w-12 h-12 text-green-500" />,
-      title: "Local Storage",
-      description: "Keep your data on your device for maximum privacy"
-    },
-    {
-      icon: <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold">G</div>,
-      title: "Google Drive",
-      description: "Sync with your existing Google Drive account"
-    },
-    {
-      icon: <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">O</div>,
-      title: "OneDrive",
-      description: "Integrate with Microsoft OneDrive seamlessly"
     }
   ];
 
@@ -97,7 +73,7 @@ const Landing: React.FC = () => {
                 Meet <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">MonoKey</span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                The only password manager that gives you complete control over your data. 
+                The secure password manager that puts you in complete control. 
                 One password, infinite possibilities, absolute security.
               </p>
             </motion.div>
@@ -175,44 +151,6 @@ const Landing: React.FC = () => {
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                   {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Storage Options Section */}
-      <section className="py-20 bg-gray-50 dark:bg-gray-800 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Your Data, Your Choice
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Complete transparency and control over where your encrypted data lives. 
-              Switch between storage options anytime.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {storageOptions.map((option, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-md text-center hover:shadow-lg transition-all duration-300"
-              >
-                <div className="flex justify-center mb-4">
-                  {option.icon}
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  {option.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">
-                  {option.description}
                 </p>
               </motion.div>
             ))}

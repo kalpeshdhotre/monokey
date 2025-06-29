@@ -75,7 +75,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         firstName: profile.first_name,
         lastName: profile.last_name,
         phoneNumber: profile.phone_number,
-        storageLocation: profile.storage_location,
         monoPasswordHash: profile.mono_password_hash,
         createdAt: profile.created_at
       };
@@ -310,7 +309,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lastName: string;
     phoneNumber?: string;
     monoPasswordHash: string;
-    storageLocation?: string;
   }) => {
     console.log('Signing up user:', email);
     setIsLoading(true);
@@ -325,7 +323,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             lastName: userData.lastName,
             phoneNumber: userData.phoneNumber,
             monoPasswordHash: userData.monoPasswordHash,
-            storageLocation: userData.storageLocation || 'saas'
+            storageLocation: 'saas'
           }
         }
       });

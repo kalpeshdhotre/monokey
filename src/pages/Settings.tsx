@@ -8,7 +8,6 @@ import {
   ArrowLeft, 
   Save,
   Key,
-  Smartphone,
   Mail,
   Phone
 } from 'lucide-react';
@@ -276,7 +275,7 @@ const Settings: React.FC = () => {
                     Storage Location:
                   </span>
                   <span className={`ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {user?.storageLocation === 'saas' ? 'Secure Cloud' : user?.storageLocation}
+                    Secure Cloud
                   </span>
                 </div>
                 <div>
