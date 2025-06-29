@@ -224,7 +224,78 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Upcoming Features Section */}
+      {/* Security Section */}
+      <section className="py-20 bg-gradient-to-br from-gray-900 to-blue-900 dark:from-gray-800 dark:to-blue-800 text-white transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">
+              Bank-Level Security
+            </h2>
+            <p className="text-xl text-blue-100 dark:text-blue-200 max-w-3xl mx-auto">
+              Your security is our top priority. MonoKey uses industry-leading encryption 
+              and security practices to keep your data safe.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">AES-256 Encryption</h3>
+              <p className="text-blue-100 dark:text-blue-200">
+                Military-grade encryption ensures your data remains secure even if intercepted.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Key className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Zero-Knowledge</h3>
+              <p className="text-blue-100 dark:text-blue-200">
+                We never see your MonoPassword or decrypted data. Only you have access.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="text-center relative"
+            >
+              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 relative">
+                <Smartphone className="w-8 h-8" />
+                {/* Coming Soon Badge for MFA */}
+                <div className="absolute -top-2 -right-2">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-lg">
+                    Soon
+                  </span>
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Multi-Factor Auth</h3>
+              <p className="text-blue-100 dark:text-blue-200">
+                Additional security layers including 2FA and biometric authentication.
+              </p>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Upcoming Features Section - Now after Security Section */}
       <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -309,77 +380,6 @@ const Landing: React.FC = () => {
               </Link>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Security Section */}
-      <section className="py-20 bg-gradient-to-br from-gray-900 to-blue-900 dark:from-gray-800 dark:to-blue-800 text-white transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">
-              Bank-Level Security
-            </h2>
-            <p className="text-xl text-blue-100 dark:text-blue-200 max-w-3xl mx-auto">
-              Your security is our top priority. MonoKey uses industry-leading encryption 
-              and security practices to keep your data safe.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center"
-            >
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">AES-256 Encryption</h3>
-              <p className="text-blue-100 dark:text-blue-200">
-                Military-grade encryption ensures your data remains secure even if intercepted.
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              viewport={{ once: true }}
-              className="text-center"
-            >
-              <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Key className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Zero-Knowledge</h3>
-              <p className="text-blue-100 dark:text-blue-200">
-                We never see your MonoPassword or decrypted data. Only you have access.
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              viewport={{ once: true }}
-              className="text-center relative"
-            >
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 relative">
-                <Smartphone className="w-8 h-8" />
-                {/* Coming Soon Badge for MFA */}
-                <div className="absolute -top-2 -right-2">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-lg">
-                    Soon
-                  </span>
-                </div>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Multi-Factor Auth</h3>
-              <p className="text-blue-100 dark:text-blue-200">
-                Additional security layers including 2FA and biometric authentication.
-              </p>
-            </motion.div>
-          </div>
         </div>
       </section>
 
