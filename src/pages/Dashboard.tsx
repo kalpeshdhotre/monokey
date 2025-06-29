@@ -12,18 +12,25 @@ import {
   Database,
   Cloud,
   HardDrive,
-  RefreshCw
+  RefreshCw,
+  Settings,
+  User
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { DatabaseService } from '../utils/database';
+import { CryptoUtils } from '../utils/crypto';
 import { Credential, StorageLocation } from '../types';
 import Button from '../components/UI/Button';
+import Input from '../components/UI/Input';
+import Modal from '../components/UI/Modal';
 import CredentialForm from '../components/CredentialForm';
 import MonoPasswordPrompt from '../components/MonoPasswordPrompt';
 import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
-  const { user, monoPassword, setMonoPassword } = useAuth();
+  const { user, monoPassword, setMonoPassword, verifyMonoPassword } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,10 +38,19 @@ const Dashboard: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMonoPasswordPromptOpen, setIsMonoPasswordPromptOpen] = useState(false);
+  const [isMonoPasswordSetupOpen, setIsMonoPasswordSetupOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: 'view' | 'copy' | 'load', field?: string, value?: string, credentialId?: string } | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+  const [monoPasswordSetup, setMonoPasswordSetup] = useState('');
+  const [confirmMonoPassword, setConfirmMonoPassword] = useState('');
+  const [userSettings, setUserSettings] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    phoneNumber: user?.phoneNumber || ''
+  });
 
   useEffect(() => {
     const filtered = credentials.filter(cred =>
@@ -45,17 +61,20 @@ const Dashboard: React.FC = () => {
   }, [searchTerm, credentials]);
 
   useEffect(() => {
-    if (monoPassword) {
+    // Check if user needs to set up MonoPassword
+    if (user && (!user.monoPasswordHash || user.monoPasswordHash === '')) {
+      setIsMonoPasswordSetupOpen(true);
+    } else if (user && !monoPassword) {
+      // User has MonoPassword set up but not entered yet
+      setIsMonoPasswordPromptOpen(true);
+    } else if (monoPassword) {
+      // MonoPassword is available, load credentials
       loadCredentials();
     }
-  }, [monoPassword]);
+  }, [user, monoPassword]);
 
   const loadCredentials = async () => {
-    if (!monoPassword) {
-      setPendingAction({ type: 'load' });
-      setIsMonoPasswordPromptOpen(true);
-      return;
-    }
+    if (!monoPassword) return;
 
     setIsLoading(true);
     try {
@@ -66,6 +85,39 @@ const Dashboard: React.FC = () => {
       console.error('Load credentials error:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleMonoPasswordSetup = async () => {
+    if (monoPasswordSetup !== confirmMonoPassword) {
+      toast.error('MonoPasswords do not match');
+      return;
+    }
+
+    if (monoPasswordSetup.length < 8) {
+      toast.error('MonoPassword must be at least 8 characters');
+      return;
+    }
+
+    try {
+      const monoPasswordHash = CryptoUtils.hashPassword(monoPasswordSetup);
+      
+      // Update user profile with MonoPassword hash
+      await DatabaseService.updateUserProfile({
+        firstName: user?.firstName,
+        lastName: user?.lastName,
+        phoneNumber: user?.phoneNumber,
+        storageLocation: user?.storageLocation
+      });
+
+      // Update the hash in database
+      await DatabaseService.updateMonoPasswordHash(monoPasswordHash);
+
+      setMonoPassword(monoPasswordSetup);
+      setIsMonoPasswordSetupOpen(false);
+      toast.success('MonoPassword set up successfully!');
+    } catch (error: any) {
+      toast.error('Failed to set up MonoPassword');
     }
   };
 
@@ -91,7 +143,7 @@ const Dashboard: React.FC = () => {
           newSet.delete(credentialId);
           return newSet;
         });
-      }, 10000); // Hide after 10 seconds
+      }, 10000);
     }
   };
 
@@ -111,6 +163,8 @@ const Dashboard: React.FC = () => {
         );
       }
       setPendingAction(null);
+    } else {
+      await loadCredentials();
     }
   };
 
@@ -122,11 +176,9 @@ const Dashboard: React.FC = () => {
 
     try {
       if (selectedCredential) {
-        // Update existing credential
         await DatabaseService.updateCredential(selectedCredential.id, credentialData, monoPassword);
         toast.success('Credential updated successfully');
       } else {
-        // Create new credential
         await DatabaseService.saveCredential(credentialData, monoPassword);
         toast.success('Credential saved successfully');
       }
@@ -152,6 +204,16 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleUpdateSettings = async () => {
+    try {
+      await DatabaseService.updateUserProfile(userSettings);
+      toast.success('Settings updated successfully');
+      setIsSettingsOpen(false);
+    } catch (error: any) {
+      toast.error('Failed to update settings');
+    }
+  };
+
   const storageOptions = [
     { value: 'saas', label: 'Secure Cloud', icon: <Cloud className="w-4 h-4" />, description: 'Encrypted cloud storage' },
     { value: 'google-drive', label: 'Google Drive', icon: <div className="w-4 h-4 bg-red-500 rounded text-white text-xs flex items-center justify-center">G</div>, description: 'Sync with Google Drive' },
@@ -160,44 +222,62 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen transition-colors ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 Welcome back, {user?.firstName}
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className={`mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                 Manage your secure credentials with complete control
               </p>
             </div>
             <div className="mt-4 sm:mt-0 flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <Shield className="w-5 h-5 text-green-500" />
-                <span className="text-sm text-gray-600">
+                <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   {credentials.length} credentials secured
                 </span>
               </div>
+              <Button
+                onClick={toggleTheme}
+                variant="outline"
+                size="sm"
+                className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : ''}
+              >
+                {isDark ? '☀️' : '🌙'}
+              </Button>
               <Button
                 onClick={loadCredentials}
                 variant="outline"
                 size="sm"
                 isLoading={isLoading}
+                className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : ''}
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
+              </Button>
+              <Button
+                onClick={() => setIsSettingsOpen(true)}
+                variant="outline"
+                size="sm"
+                className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : ''}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
               </Button>
             </div>
           </div>
         </div>
 
         {/* Storage Location Selector */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className={`rounded-lg shadow-sm border p-6 mb-6 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Storage Location</h2>
-            <Database className="w-5 h-5 text-gray-400" />
+            <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Storage Location</h2>
+            <Database className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             {storageOptions.map((option) => (
@@ -206,15 +286,15 @@ const Dashboard: React.FC = () => {
                 onClick={() => setStorageLocation(option.value as StorageLocation)}
                 className={`p-4 rounded-lg border-2 transition-all text-left ${
                   storageLocation === option.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                    : `border-gray-200 hover:border-gray-300 ${isDark ? 'border-gray-600 hover:border-gray-500 text-gray-300' : ''}`
                 }`}
               >
                 <div className="flex items-center space-x-3 mb-2">
                   {option.icon}
                   <span className="font-medium">{option.label}</span>
                 </div>
-                <p className="text-sm text-gray-600">{option.description}</p>
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{option.description}</p>
               </button>
             ))}
           </div>
@@ -224,13 +304,17 @@ const Dashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
           <div className="flex-1 max-w-md">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
               <input
                 type="text"
                 placeholder="Search credentials..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  isDark 
+                    ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
               />
             </div>
           </div>
@@ -246,44 +330,44 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Credentials Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className={`rounded-lg shadow-sm border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Loading credentials...</span>
+              <span className={`ml-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Loading credentials...</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className={isDark ? 'bg-gray-700' : 'bg-gray-50'}>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
                       Account
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
                       Username
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
                       Password
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className={`divide-y ${isDark ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
                   {filteredCredentials.map((credential) => (
                     <motion.tr
                       key={credential.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="hover:bg-gray-50"
+                      className={`hover:${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <span className="text-2xl mr-3">{credential.icon}</span>
                           <div>
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                               {credential.accountName}
                             </div>
                           </div>
@@ -291,10 +375,10 @@ const Dashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-900">{credential.username}</span>
+                          <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>{credential.username}</span>
                           <button
                             onClick={() => handleSecureAction('copy', 'Username', credential.username)}
-                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
                           >
                             <Copy className="w-4 h-4" />
                           </button>
@@ -302,18 +386,18 @@ const Dashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-900 font-mono">
+                          <span className={`text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>
                             {visiblePasswords.has(credential.id) ? credential.password : '••••••••'}
                           </span>
                           <button
                             onClick={() => handleSecureAction('view', 'Password', credential.password, credential.id)}
-                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
                           >
                             {visiblePasswords.has(credential.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                           <button
                             onClick={() => handleSecureAction('copy', 'Password', credential.password)}
-                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
                           >
                             <Copy className="w-4 h-4" />
                           </button>
@@ -348,9 +432,9 @@ const Dashboard: React.FC = () => {
 
         {filteredCredentials.length === 0 && !isLoading && (
           <div className="text-center py-12">
-            <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No credentials found</h3>
-            <p className="text-gray-600 mb-4">
+            <Shield className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
+            <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>No credentials found</h3>
+            <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
               {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first credential'}
             </p>
             {!searchTerm && (
@@ -363,7 +447,122 @@ const Dashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Modals */}
+      {/* MonoPassword Setup Modal */}
+      <Modal 
+        isOpen={isMonoPasswordSetupOpen} 
+        onClose={() => {}} 
+        title="Set Up Your MonoPassword"
+      >
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Create Your Master Key
+            </h3>
+            <p className="text-gray-600">
+              Your MonoPassword is the master key that encrypts all your credentials. 
+              Choose something secure that you'll remember.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <Input
+              label="MonoPassword"
+              type="password"
+              value={monoPasswordSetup}
+              onChange={(e) => setMonoPasswordSetup(e.target.value)}
+              placeholder="Enter your MonoPassword"
+              showPasswordToggle
+              required
+            />
+
+            <Input
+              label="Confirm MonoPassword"
+              type="password"
+              value={confirmMonoPassword}
+              onChange={(e) => setConfirmMonoPassword(e.target.value)}
+              placeholder="Confirm your MonoPassword"
+              showPasswordToggle
+              required
+            />
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-yellow-800">
+              <strong>Important:</strong> Your MonoPassword cannot be recovered if lost. 
+              Please store it securely and remember it.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleMonoPasswordSetup}
+            className="w-full"
+            disabled={!monoPasswordSetup || !confirmMonoPassword}
+          >
+            Set Up MonoPassword
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Settings Modal */}
+      <Modal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        title="User Settings"
+      >
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-gray-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Update Your Profile
+            </h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="First Name"
+                value={userSettings.firstName}
+                onChange={(e) => setUserSettings(prev => ({ ...prev, firstName: e.target.value }))}
+              />
+              <Input
+                label="Last Name"
+                value={userSettings.lastName}
+                onChange={(e) => setUserSettings(prev => ({ ...prev, lastName: e.target.value }))}
+              />
+            </div>
+
+            <Input
+              label="Phone Number"
+              type="tel"
+              value={userSettings.phoneNumber}
+              onChange={(e) => setUserSettings(prev => ({ ...prev, phoneNumber: e.target.value }))}
+            />
+          </div>
+
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsSettingsOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateSettings}
+              className="flex-1"
+            >
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Other Modals */}
       <MonoPasswordPrompt
         isOpen={isMonoPasswordPromptOpen}
         onClose={() => setIsMonoPasswordPromptOpen(false)}

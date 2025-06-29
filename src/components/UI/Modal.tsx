@@ -43,15 +43,15 @@ const Modal: React.FC<ModalProps> = ({
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={`relative w-full ${sizeClasses[size]} bg-white rounded-lg shadow-xl`}
+              className={`relative w-full ${sizeClasses[size]} bg-white dark:bg-gray-800 rounded-lg shadow-xl`}
             >
               {/* Header */}
               {title && (
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
                   <button
                     onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   >
                     <X className="w-6 h-6" />
                   </button>

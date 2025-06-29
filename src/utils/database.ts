@@ -147,6 +147,18 @@ export class DatabaseService {
     if (error) throw error;
   }
 
+  static async updateMonoPasswordHash(monoPasswordHash: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ mono_password_hash: monoPasswordHash })
+      .eq('id', user.id);
+
+    if (error) throw error;
+  }
+
   static async getUserProfile() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');

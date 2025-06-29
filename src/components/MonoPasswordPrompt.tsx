@@ -58,22 +58,22 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
     <Modal isOpen={isOpen} onClose={handleClose} title="Verify MonoPassword">
       <div className="space-y-6">
         <div className="text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-blue-600" />
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             Security Verification Required
           </h3>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Please enter your MonoPassword to access this sensitive information.
           </p>
         </div>
 
         {attempts > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start space-x-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
             <div>
-              <p className="text-sm text-yellow-800">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
                 Invalid MonoPassword. {3 - attempts} attempts remaining.
               </p>
             </div>
@@ -112,8 +112,8 @@ const MonoPasswordPrompt: React.FC<MonoPasswordPromptProps> = ({
           </div>
         </form>
 
-        <div className="bg-gray-50 rounded-lg p-4">
-          <p className="text-xs text-gray-600">
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <p className="text-xs text-gray-600 dark:text-gray-300">
             <strong>Security Note:</strong> Your MonoPassword is never stored or transmitted. 
             It's used locally to decrypt your data.
           </p>
