@@ -11,6 +11,7 @@ interface AuthContextType extends AuthState {
   verifyMonoPassword: (monoPassword: string) => boolean;
   setMonoPassword: (password: string) => void;
   monoPassword: string | null;
+  clearAuthData: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +29,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [monoPassword, setMonoPasswordState] = useState<string | null>(null);
+
+  const clearAuthData = () => {
+    // Clear all possible authentication storage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear Supabase specific storage
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith('sb-') || key.includes('supabase')) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // Clear session storage
+    const sessionKeys = Object.keys(sessionStorage);
+    sessionKeys.forEach(key => {
+      if (key.startsWith('sb-') || key.includes('supabase')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+
+    // Reset state
+    setUser(null);
+    setIsAuthenticated(false);
+    setMonoPasswordState(null);
+  };
 
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
     try {
@@ -61,9 +89,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session
+    // Clear any stale authentication data on app initialization
     const initializeAuth = async () => {
       try {
+        // First, clear any potentially stale data
+        clearAuthData();
+        
+        // Small delay to ensure cleanup is complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Now check for valid session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -78,8 +113,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (session?.user && mounted) {
           const userProfile = await fetchUserProfile(session.user);
-          setUser(userProfile);
-          setIsAuthenticated(!!userProfile);
+          if (userProfile) {
+            setUser(userProfile);
+            setIsAuthenticated(true);
+          } else {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
         } else if (mounted) {
           setUser(null);
           setIsAuthenticated(false);
@@ -123,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (event === 'SIGNED_OUT') {
           setMonoPasswordState(null);
+          clearAuthData();
         }
       }
     );
@@ -181,6 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setMonoPasswordState(null);
+    clearAuthData();
   };
 
   const verifyMonoPassword = (inputPassword: string): boolean => {
@@ -203,7 +245,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     verifyMonoPassword,
     setMonoPassword,
-    monoPassword
+    monoPassword,
+    clearAuthData
   };
 
   return (
