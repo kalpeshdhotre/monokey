@@ -6,7 +6,7 @@ import { LogOut, User, Settings, Menu, X, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Header: React.FC = () => {
-  const { user, isAuthenticated, signOut, clearAuthData } = useAuth();
+  const { user, isAuthenticated, signOut } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -28,16 +28,16 @@ const Header: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
+      console.log('Header: Starting sign out process...');
       setIsUserMenuOpen(false);
       setIsMenuOpen(false);
       
       await signOut();
-      clearAuthData();
+      console.log('Header: Sign out completed, navigating to home...');
       navigate('/', { replace: true });
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('Header: Sign out error:', error);
       // Force navigation even if sign out fails
-      clearAuthData();
       navigate('/', { replace: true });
     }
   };

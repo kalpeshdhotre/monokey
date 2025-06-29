@@ -23,25 +23,41 @@ const LoadingSpinner: React.FC = () => (
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log('ProtectedRoute - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log('PublicRoute - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
+  if (isAuthenticated) {
+    console.log('Already authenticated, redirecting to dashboard');
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 const AppContent: React.FC = () => {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
+
+  console.log('AppContent - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user?.email);
 
   // Show loading spinner during initial auth check
   if (isLoading) {

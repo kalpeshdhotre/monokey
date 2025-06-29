@@ -30,7 +30,7 @@ import MonoPasswordPrompt from '../components/MonoPasswordPrompt';
 import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
-  const { user, monoPassword, setMonoPassword, verifyMonoPassword } = useAuth();
+  const { user, monoPassword, setMonoPassword, verifyMonoPassword, isLoading: authLoading } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
@@ -49,6 +49,8 @@ const Dashboard: React.FC = () => {
   const [monoPasswordSetup, setMonoPasswordSetup] = useState('');
   const [confirmMonoPassword, setConfirmMonoPassword] = useState('');
 
+  console.log('Dashboard render - user:', user?.email, 'authLoading:', authLoading, 'monoPassword:', !!monoPassword);
+
   useEffect(() => {
     const filtered = credentials.filter(cred =>
       cred.accountName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -58,28 +60,44 @@ const Dashboard: React.FC = () => {
   }, [searchTerm, credentials]);
 
   useEffect(() => {
+    console.log('Dashboard useEffect - user:', user?.email, 'monoPassword:', !!monoPassword);
+    
+    // Don't proceed if auth is still loading
+    if (authLoading) {
+      console.log('Auth still loading, waiting...');
+      return;
+    }
+
     // Check if user needs to set up MonoPassword
     if (user && (!user.monoPasswordHash || user.monoPasswordHash === '')) {
+      console.log('User needs to set up MonoPassword');
       setIsMonoPasswordSetupOpen(true);
     } else if (user && !monoPassword) {
       // User has MonoPassword set up but not entered yet
+      console.log('User needs to enter MonoPassword');
       setIsMonoPasswordPromptOpen(true);
-    } else if (monoPassword) {
+    } else if (user && monoPassword) {
       // MonoPassword is available, load credentials
+      console.log('Loading credentials...');
       loadCredentials();
     }
-  }, [user, monoPassword]);
+  }, [user, monoPassword, authLoading]);
 
   const loadCredentials = async () => {
-    if (!monoPassword) return;
+    if (!monoPassword) {
+      console.log('No monoPassword available for loading credentials');
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log('Loading credentials from database...');
       const creds = await DatabaseService.getCredentials(monoPassword);
+      console.log('Loaded', creds.length, 'credentials');
       setCredentials(creds);
     } catch (error: any) {
-      toast.error('Failed to load credentials');
       console.error('Load credentials error:', error);
+      toast.error('Failed to load credentials');
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +115,7 @@ const Dashboard: React.FC = () => {
     }
 
     try {
+      console.log('Setting up MonoPassword...');
       const monoPasswordHash = CryptoUtils.hashPassword(monoPasswordSetup);
       
       // Update the hash in database
@@ -105,7 +124,9 @@ const Dashboard: React.FC = () => {
       setMonoPassword(monoPasswordSetup);
       setIsMonoPasswordSetupOpen(false);
       toast.success('MonoPassword set up successfully!');
+      console.log('MonoPassword setup completed');
     } catch (error: any) {
+      console.error('MonoPassword setup error:', error);
       toast.error('Failed to set up MonoPassword');
     }
   };
@@ -137,6 +158,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleMonoPasswordVerified = async (password: string) => {
+    console.log('MonoPassword verified, setting password...');
     setMonoPassword(password);
     setIsMonoPasswordPromptOpen(false);
     
@@ -193,8 +215,8 @@ const Dashboard: React.FC = () => {
       await DatabaseService.deleteCredential(credentialToDelete.id);
       toast.success('Credential deleted successfully');
       
-      // Reload credentials to refresh the dashboard
-      await loadCredentials();
+      // Remove the deleted credential from state instead of reloading
+      setCredentials(prev => prev.filter(cred => cred.id !== credentialToDelete.id));
       
       setIsDeleteConfirmOpen(false);
       setCredentialToDelete(null);
@@ -209,6 +231,29 @@ const Dashboard: React.FC = () => {
     { value: 'onedrive', label: 'OneDrive', icon: <div className="w-4 h-4 bg-blue-600 rounded text-white text-xs flex items-center justify-center">O</div>, description: 'Microsoft OneDrive' },
     { value: 'local', label: 'Local Storage', icon: <HardDrive className="w-4 h-4" />, description: 'Browser local storage' }
   ];
+
+  // Show loading if auth is still loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no user
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <p className="text-gray-600 dark:text-gray-400">User not found. Please sign in again.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen transition-colors ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>

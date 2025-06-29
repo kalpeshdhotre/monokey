@@ -27,12 +27,15 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
+      console.log('Login: Starting sign in process...');
       await signIn(data.email, data.password);
+      
+      console.log('Login: Sign in successful, navigating to dashboard...');
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
+      console.error('Login: Sign in failed:', error);
       toast.error(error.message || 'Failed to sign in');
-    } finally {
       setIsLoading(false);
     }
   };
