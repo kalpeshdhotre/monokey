@@ -30,7 +30,7 @@ import MonoPasswordPrompt from '../components/MonoPasswordPrompt';
 import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
-  const { user, monoPassword, setMonoPassword, verifyMonoPassword, isLoading: authLoading } = useAuth();
+  const { user, monoPassword, setMonoPassword, verifyMonoPassword, isLoading: authLoading, refreshUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
@@ -48,6 +48,7 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [monoPasswordSetup, setMonoPasswordSetup] = useState('');
   const [confirmMonoPassword, setConfirmMonoPassword] = useState('');
+  const [isSettingUpPassword, setIsSettingUpPassword] = useState(false);
 
   console.log('Dashboard render - user:', user?.email, 'authLoading:', authLoading, 'monoPassword:', !!monoPassword);
 
@@ -114,6 +115,8 @@ const Dashboard: React.FC = () => {
       return;
     }
 
+    setIsSettingUpPassword(true);
+    
     try {
       console.log('Setting up MonoPassword...');
       const monoPasswordHash = CryptoUtils.hashPassword(monoPasswordSetup);
@@ -121,13 +124,26 @@ const Dashboard: React.FC = () => {
       // Update the hash in database
       await DatabaseService.updateMonoPasswordHash(monoPasswordHash);
 
+      // Refresh user data to get updated profile
+      await refreshUser();
+
+      // Set the MonoPassword in context
       setMonoPassword(monoPasswordSetup);
+      
+      // Close the setup modal
       setIsMonoPasswordSetupOpen(false);
+      
+      // Clear the form
+      setMonoPasswordSetup('');
+      setConfirmMonoPassword('');
+      
       toast.success('MonoPassword set up successfully!');
       console.log('MonoPassword setup completed');
     } catch (error: any) {
       console.error('MonoPassword setup error:', error);
       toast.error('Failed to set up MonoPassword');
+    } finally {
+      setIsSettingUpPassword(false);
     }
   };
 
@@ -567,7 +583,8 @@ const Dashboard: React.FC = () => {
           <Button
             onClick={handleMonoPasswordSetup}
             className="w-full"
-            disabled={!monoPasswordSetup || !confirmMonoPassword}
+            disabled={!monoPasswordSetup || !confirmMonoPassword || isSettingUpPassword}
+            isLoading={isSettingUpPassword}
           >
             Set Up MonoPassword
           </Button>
