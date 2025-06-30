@@ -15,12 +15,11 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCredentials } from '../contexts/CredentialContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { DatabaseService } from '../utils/database';
 import { CryptoUtils } from '../utils/crypto';
 import { Credential } from '../types';
 import Button from '../components/UI/Button';
-import Input from '../components/UI/Input';
 import Modal from '../components/UI/Modal';
 import CredentialForm from '../components/CredentialForm';
 import MonoKeyPrompt from '../components/MonoPasswordPrompt';
@@ -28,8 +27,17 @@ import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
   const { user, monoKey, setMonoKey, verifyMonoKey, isInitialLoading, refreshUser } = useAuth();
+  const { 
+    credentials, 
+    isLoadingCredentials, 
+    hasLoadedCredentials,
+    addCredential, 
+    updateCredential, 
+    removeCredential, 
+    loadCredentials 
+  } = useCredentials();
   const { isDark, toggleTheme } = useTheme();
-  const [credentials, setCredentials] = useState<Credential[]>([]);
+  
   const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -46,13 +54,11 @@ const Dashboard: React.FC = () => {
     credentialId?: string
   } | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(false);
   const [monoKeySetup, setMonoKeySetup] = useState('');
   const [confirmMonoKey, setConfirmMonoKey] = useState('');
   const [isSettingUpKey, setIsSettingUpKey] = useState(false);
-  const [hasLoadedCredentials, setHasLoadedCredentials] = useState(false);
 
-  console.log('Dashboard render - user:', user?.email, 'isInitialLoading:', isInitialLoading, 'monoKey:', !!monoKey);
+  console.log('Dashboard render - user:', user?.email, 'isInitialLoading:', isInitialLoading, 'monoKey:', !!monoKey, 'hasLoadedCredentials:', hasLoadedCredentials);
 
   useEffect(() => {
     const filtered = credentials.filter(cred =>
@@ -79,33 +85,9 @@ const Dashboard: React.FC = () => {
       // User has MonoKey set up but not entered yet, and we haven't loaded credentials
       console.log('User needs to enter MonoKey');
       setIsMonoKeyPromptOpen(true);
-    } else if (user && monoKey && !hasLoadedCredentials) {
-      // MonoKey is available and we haven't loaded credentials yet
-      console.log('Loading credentials from Supabase...');
-      loadCredentials();
     }
+    // Note: Credential loading is now handled by CredentialContext
   }, [user, monoKey, isInitialLoading, hasLoadedCredentials]);
-
-  const loadCredentials = async () => {
-    if (!monoKey) {
-      console.log('No monoKey available for loading credentials');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      console.log('Loading credentials from database...');
-      const creds = await DatabaseService.getCredentials(monoKey);
-      console.log('Loaded', creds.length, 'credentials');
-      setCredentials(creds);
-      setHasLoadedCredentials(true);
-    } catch (error: any) {
-      console.error('Load credentials error:', error);
-      toast.error('Failed to load credentials');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleMonoKeySetup = async () => {
     if (monoKeySetup !== confirmMonoKey) {
@@ -125,6 +107,7 @@ const Dashboard: React.FC = () => {
       const monoKeyHash = CryptoUtils.hashPassword(monoKeySetup);
       
       // Update the hash in database
+      const { DatabaseService } = await import('../utils/database');
       await DatabaseService.updateMonoPasswordHash(monoKeyHash);
 
       // Refresh user data to get updated profile
@@ -204,9 +187,8 @@ const Dashboard: React.FC = () => {
         );
       }
       setPendingAction(null);
-    } else if (!hasLoadedCredentials) {
-      await loadCredentials();
     }
+    // Note: Credential loading is now handled automatically by CredentialContext
   };
 
   const handleSaveCredential = async (credentialData: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -218,33 +200,11 @@ const Dashboard: React.FC = () => {
     try {
       if (selectedCredential) {
         // Update existing credential
-        await DatabaseService.updateCredential(selectedCredential.id, credentialData, monoKey);
-        
-        // Update the credential in state directly instead of reloading
-        setCredentials(prev => prev.map(cred => 
-          cred.id === selectedCredential.id 
-            ? { 
-                ...cred, 
-                ...credentialData, 
-                updatedAt: new Date().toISOString() 
-              }
-            : cred
-        ));
-        
+        await updateCredential(selectedCredential.id, credentialData);
         toast.success('Credential updated successfully');
       } else {
         // Save new credential
-        const savedCredential = await DatabaseService.saveCredential(credentialData, monoKey);
-        
-        // Add the new credential to state directly instead of reloading
-        const newCredential: Credential = {
-          id: savedCredential.id,
-          ...credentialData,
-          createdAt: savedCredential.createdAt,
-          updatedAt: savedCredential.updatedAt
-        };
-        
-        setCredentials(prev => [newCredential, ...prev]);
+        await addCredential(credentialData);
         toast.success('Credential saved successfully');
       }
 
@@ -265,11 +225,8 @@ const Dashboard: React.FC = () => {
     if (!credentialToDelete) return;
 
     try {
-      await DatabaseService.deleteCredential(credentialToDelete.id);
+      await removeCredential(credentialToDelete.id);
       toast.success('Credential deleted successfully');
-      
-      // Remove the deleted credential from state instead of reloading
-      setCredentials(prev => prev.filter(cred => cred.id !== credentialToDelete.id));
       
       setIsDeleteConfirmOpen(false);
       setCredentialToDelete(null);
@@ -335,7 +292,7 @@ const Dashboard: React.FC = () => {
                 onClick={loadCredentials}
                 variant="outline"
                 size="sm"
-                isLoading={isLoading}
+                isLoading={isLoadingCredentials}
                 disabled={!monoKey}
                 className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : ''}
               >
@@ -399,10 +356,10 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Credentials Table */}
+        {/* Credentials Table - Always show when MonoKey is available */}
         {monoKey && (
           <div className={`rounded-lg shadow-sm border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            {isLoading ? (
+            {isLoadingCredentials && !hasLoadedCredentials ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <span className={`ml-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Loading credentials...</span>
@@ -515,7 +472,7 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Show empty state only when MonoKey is available but no credentials */}
-        {monoKey && filteredCredentials.length === 0 && !isLoading && (
+        {monoKey && filteredCredentials.length === 0 && !isLoadingCredentials && hasLoadedCredentials && (
           <div className="text-center py-12">
             <Shield className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
             <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>No credentials found</h3>
@@ -592,25 +549,33 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <Input
-              label="MonoKey"
-              type="password"
-              value={monoKeySetup}
-              onChange={(e) => setMonoKeySetup(e.target.value)}
-              placeholder="Enter your MonoKey"
-              showPasswordToggle
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                MonoKey
+              </label>
+              <input
+                type="password"
+                value={monoKeySetup}
+                onChange={(e) => setMonoKeySetup(e.target.value)}
+                placeholder="Enter your MonoKey"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
 
-            <Input
-              label="Confirm MonoKey"
-              type="password"
-              value={confirmMonoKey}
-              onChange={(e) => setConfirmMonoKey(e.target.value)}
-              placeholder="Confirm your MonoKey"
-              showPasswordToggle
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Confirm MonoKey
+              </label>
+              <input
+                type="password"
+                value={confirmMonoKey}
+                onChange={(e) => setConfirmMonoKey(e.target.value)}
+                placeholder="Confirm your MonoKey"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
           </div>
 
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">

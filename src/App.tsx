@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { CredentialProvider } from './contexts/CredentialContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Header from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
@@ -140,7 +141,9 @@ function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
-          <AppContent />
+          <CredentialProvider>
+            <AppContent />
+          </CredentialProvider>
         </AuthProvider>
       </ThemeProvider>
     </Router>
