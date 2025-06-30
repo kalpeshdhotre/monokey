@@ -21,7 +21,7 @@ import Modal from '../components/UI/Modal';
 import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
-  const { user, verifyMonoKey } = useAuth();
+  const { user, verifyMonoKey, updateUserInContext, refreshUser } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +50,16 @@ const Settings: React.FC = () => {
   const handleUpdateProfile = async () => {
     setIsLoading(true);
     try {
+      console.log('Settings: Updating user profile...');
       await DatabaseService.updateUserProfile(userSettings);
+      
+      // Update the user in context immediately
+      updateUserInContext({
+        firstName: userSettings.firstName,
+        lastName: userSettings.lastName,
+        phoneNumber: userSettings.phoneNumber
+      });
+      
       toast.success('Profile updated successfully');
       
       // Navigate back to dashboard after successful update
@@ -58,8 +67,8 @@ const Settings: React.FC = () => {
         navigate('/dashboard');
       }, 1000);
     } catch (error: any) {
-      toast.error('Failed to update profile');
-      console.error('Profile update error:', error);
+      console.error('Settings: Profile update error:', error);
+      toast.error(error.message || 'Failed to update profile');
     } finally {
       setIsLoading(false);
     }
@@ -82,8 +91,14 @@ const Settings: React.FC = () => {
     }
 
     try {
+      console.log('Settings: Updating MonoKey...');
       const newMonoKeyHash = CryptoUtils.hashPassword(keyChange.newMonoKey);
       await DatabaseService.updateMonoPasswordHash(newMonoKeyHash);
+      
+      // Update the user in context with new hash
+      updateUserInContext({
+        monoPasswordHash: newMonoKeyHash
+      });
       
       toast.success('MonoKey updated successfully');
       setIsChangeKeyOpen(false);
@@ -93,7 +108,8 @@ const Settings: React.FC = () => {
         confirmNewMonoKey: ''
       });
     } catch (error: any) {
-      toast.error('Failed to update MonoKey');
+      console.error('Settings: MonoKey update error:', error);
+      toast.error(error.message || 'Failed to update MonoKey');
     }
   };
 

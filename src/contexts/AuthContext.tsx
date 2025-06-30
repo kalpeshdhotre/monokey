@@ -13,6 +13,7 @@ interface AuthContextType extends AuthState {
   monoKey: string | null;
   clearAuthData: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUserInContext: (updates: Partial<User>) => void;
   isInitialLoading: boolean;
   isAuthProcessing: boolean;
   isMonoKeyVerified: boolean;
@@ -187,6 +188,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMonoKeyState(null);
         setIsMonoKeyVerified(false);
       }
+    }
+  };
+
+  // NEW: Function to update user in context without full refresh
+  const updateUserInContext = (updates: Partial<User>) => {
+    if (isMountedRef.current && user) {
+      console.log('AuthContext: Updating user in context:', updates);
+      setUser(prev => prev ? { ...prev, ...updates } : null);
     }
   };
 
@@ -552,7 +561,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMonoKey,
     monoKey,
     clearAuthData,
-    refreshUser
+    refreshUser,
+    updateUserInContext
   };
 
   return (

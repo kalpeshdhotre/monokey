@@ -29,7 +29,10 @@ export class DatabaseService {
       .select('id, created_at, updated_at')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('DatabaseService: Save credential error:', error);
+      throw new Error(`Failed to save credential: ${error.message}`);
+    }
 
     return {
       id: data.id,
@@ -48,7 +51,10 @@ export class DatabaseService {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('DatabaseService: Get credentials error:', error);
+      throw new Error(`Failed to load credentials: ${error.message}`);
+    }
 
     // Decrypt credentials
     const credentials: Credential[] = [];
@@ -70,7 +76,7 @@ export class DatabaseService {
           updatedAt: encCred.updated_at
         });
       } catch (error) {
-        console.error('Failed to decrypt credential:', encCred.id, error);
+        console.error('DatabaseService: Failed to decrypt credential:', encCred.id, error);
         // Skip corrupted credentials
       }
     }
@@ -90,25 +96,28 @@ export class DatabaseService {
       .eq('user_id', user.id)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error('DatabaseService: Fetch credential for update error:', fetchError);
+      throw new Error(`Failed to fetch credential: ${fetchError.message}`);
+    }
 
     // Decrypt current data
     const currentDecrypted = JSON.parse(CryptoUtils.decrypt(currentCred.encrypted_data, monoKey));
 
     // Merge with updates
     const updatedData = {
-      username: credential.username || currentDecrypted.username,
-      password: credential.password || currentDecrypted.password,
-      recoveryEmail: credential.recoveryEmail || currentDecrypted.recoveryEmail,
-      recoveryMobile: credential.recoveryMobile || currentDecrypted.recoveryMobile,
-      twoFactorCodes: credential.twoFactorCodes || currentDecrypted.twoFactorCodes
+      username: credential.username !== undefined ? credential.username : currentDecrypted.username,
+      password: credential.password !== undefined ? credential.password : currentDecrypted.password,
+      recoveryEmail: credential.recoveryEmail !== undefined ? credential.recoveryEmail : currentDecrypted.recoveryEmail,
+      recoveryMobile: credential.recoveryMobile !== undefined ? credential.recoveryMobile : currentDecrypted.recoveryMobile,
+      twoFactorCodes: credential.twoFactorCodes !== undefined ? credential.twoFactorCodes : currentDecrypted.twoFactorCodes
     };
 
     const encryptedData = CryptoUtils.encrypt(JSON.stringify(updatedData), monoKey);
 
     const updateFields: any = { encrypted_data: encryptedData };
-    if (credential.accountName) updateFields.account_name = credential.accountName;
-    if (credential.icon) updateFields.icon = credential.icon;
+    if (credential.accountName !== undefined) updateFields.account_name = credential.accountName;
+    if (credential.icon !== undefined) updateFields.icon = credential.icon;
 
     const { error } = await supabase
       .from('credentials')
@@ -116,7 +125,10 @@ export class DatabaseService {
       .eq('id', id)
       .eq('user_id', user.id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('DatabaseService: Update credential error:', error);
+      throw new Error(`Failed to update credential: ${error.message}`);
+    }
   }
 
   static async deleteCredential(id: string): Promise<void> {
@@ -129,7 +141,10 @@ export class DatabaseService {
       .eq('id', id)
       .eq('user_id', user.id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('DatabaseService: Delete credential error:', error);
+      throw new Error(`Failed to delete credential: ${error.message}`);
+    }
   }
 
   static async updateUserProfile(updates: {
@@ -141,8 +156,8 @@ export class DatabaseService {
     if (!user) throw new Error('User not authenticated');
 
     const updateFields: any = {};
-    if (updates.firstName) updateFields.first_name = updates.firstName;
-    if (updates.lastName) updateFields.last_name = updates.lastName;
+    if (updates.firstName !== undefined) updateFields.first_name = updates.firstName;
+    if (updates.lastName !== undefined) updateFields.last_name = updates.lastName;
     if (updates.phoneNumber !== undefined) updateFields.phone_number = updates.phoneNumber;
 
     const { error } = await supabase
@@ -150,7 +165,10 @@ export class DatabaseService {
       .update(updateFields)
       .eq('id', user.id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('DatabaseService: Update user profile error:', error);
+      throw new Error(`Failed to update profile: ${error.message}`);
+    }
   }
 
   static async updateMonoPasswordHash(monoKeyHash: string): Promise<void> {
@@ -162,7 +180,10 @@ export class DatabaseService {
       .update({ mono_password_hash: monoKeyHash })
       .eq('id', user.id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('DatabaseService: Update mono password hash error:', error);
+      throw new Error(`Failed to update MonoKey: ${error.message}`);
+    }
   }
 
   static async getUserProfile() {
@@ -175,7 +196,11 @@ export class DatabaseService {
       .eq('id', user.id)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('DatabaseService: Get user profile error:', error);
+      throw new Error(`Failed to get profile: ${error.message}`);
+    }
+    
     return profile;
   }
 }
