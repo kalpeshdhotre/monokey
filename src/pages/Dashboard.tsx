@@ -20,6 +20,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { CryptoUtils } from '../utils/crypto';
 import { Credential } from '../types';
 import Button from '../components/UI/Button';
+import Input from '../components/UI/Input';
 import Modal from '../components/UI/Modal';
 import CredentialForm from '../components/CredentialForm';
 import MonoKeyPrompt from '../components/MonoPasswordPrompt';
@@ -553,33 +554,25 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                MonoKey
-              </label>
-              <input
-                type="password"
-                value={monoKeySetup}
-                onChange={(e) => setMonoKeySetup(e.target.value)}
-                placeholder="Enter your MonoKey"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                required
-              />
-            </div>
+            <Input
+              label="MonoKey"
+              type="password"
+              value={monoKeySetup}
+              onChange={(e) => setMonoKeySetup(e.target.value)}
+              placeholder="Enter your MonoKey"
+              showPasswordToggle
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Confirm MonoKey
-              </label>
-              <input
-                type="password"
-                value={confirmMonoKey}
-                onChange={(e) => setConfirmMonoKey(e.target.value)}
-                placeholder="Confirm your MonoKey"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                required
-              />
-            </div>
+            <Input
+              label="Confirm MonoKey"
+              type="password"
+              value={confirmMonoKey}
+              onChange={(e) => setConfirmMonoKey(e.target.value)}
+              placeholder="Confirm your MonoKey"
+              showPasswordToggle
+              required
+            />
           </div>
 
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">

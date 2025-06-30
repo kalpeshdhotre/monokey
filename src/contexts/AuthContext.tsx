@@ -35,14 +35,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [monoKey, setMonoKeyState] = useState<string | null>(null);
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const clearAuthData = async () => {
     console.log('Clearing auth data...');
     
     // Reset state first
-    setUser(null);
-    setIsAuthenticated(false);
-    setMonoKeyState(null);
+    if (isMountedRef.current) {
+      setUser(null);
+      setIsAuthenticated(false);
+      setMonoKeyState(null);
+    }
     
     // Clear all session data from storage
     await authService.clearSession();
@@ -104,29 +115,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error.message?.includes('refresh_token_not_found') || error.message?.includes('Invalid Refresh Token')) {
           await authService.clearSession();
         }
-        setUser(null);
-        setIsAuthenticated(false);
+        if (isMountedRef.current) {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
         return;
       }
 
       if (authUser) {
         const userProfile = await fetchUserProfile(authUser);
-        if (userProfile) {
+        if (userProfile && isMountedRef.current) {
           setUser(userProfile);
           setIsAuthenticated(true);
           console.log('User refreshed successfully');
-        } else {
+        } else if (isMountedRef.current) {
           setUser(null);
           setIsAuthenticated(false);
         }
-      } else {
+      } else if (isMountedRef.current) {
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
-      setUser(null);
-      setIsAuthenticated(false);
+      if (isMountedRef.current) {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
     }
   };
 
@@ -141,7 +156,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       initializationRef.current = true;
-      setIsInitialLoading(true);
+      
+      if (mounted && isMountedRef.current) {
+        setIsInitialLoading(true);
+      }
       
       try {
         console.log('Initializing auth...');
@@ -163,40 +181,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (error.message?.includes('refresh_token_not_found') || error.message?.includes('Invalid Refresh Token')) {
             await authService.clearSession();
           }
-          if (mounted) {
+          if (mounted && isMountedRef.current) {
             setUser(null);
             setIsAuthenticated(false);
           }
           return;
         }
 
-        if (session?.user && mounted) {
+        if (session?.user && mounted && isMountedRef.current) {
           console.log('Found existing session for:', session.user.email);
           const userProfile = await fetchUserProfile(session.user);
-          if (userProfile && mounted) {
+          if (userProfile && mounted && isMountedRef.current) {
             setUser(userProfile);
             setIsAuthenticated(true);
             console.log('Auth initialized with existing session');
-          } else if (mounted) {
+          } else if (mounted && isMountedRef.current) {
             setUser(null);
             setIsAuthenticated(false);
           }
-        } else if (mounted) {
+        } else if (mounted && isMountedRef.current) {
           console.log('No existing session found');
           setUser(null);
           setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        if (mounted) {
+        if (mounted && isMountedRef.current) {
           setUser(null);
           setIsAuthenticated(false);
         }
       } finally {
-        if (mounted) {
+        if (mounted && isMountedRef.current) {
           setIsInitialLoading(false);
-          initializationRef.current = false;
         }
+        initializationRef.current = false;
       }
     };
 
@@ -205,7 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes with debouncing
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!mounted) return;
+        if (!mounted || !isMountedRef.current) return;
 
         // Prevent handling auth state changes during initialization
         if (initializationRef.current) {
@@ -225,29 +243,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           if (event === 'SIGNED_OUT') {
             console.log('User signed out');
-            setUser(null);
-            setIsAuthenticated(false);
-            setMonoKeyState(null);
-            setIsAuthProcessing(false);
+            if (isMountedRef.current) {
+              setUser(null);
+              setIsAuthenticated(false);
+              setMonoKeyState(null);
+              setIsAuthProcessing(false);
+            }
             return;
           }
 
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('User signed in:', session.user.email);
-            setIsAuthProcessing(true);
+            if (isMountedRef.current) {
+              setIsAuthProcessing(true);
+            }
             
             const userProfile = await fetchUserProfile(session.user);
-            if (userProfile && mounted) {
+            if (userProfile && mounted && isMountedRef.current) {
               setUser(userProfile);
               setIsAuthenticated(true);
               console.log('Sign in completed successfully');
-            } else if (mounted) {
+            } else if (mounted && isMountedRef.current) {
               console.error('Failed to fetch user profile after sign in');
               setUser(null);
               setIsAuthenticated(false);
             }
             
-            if (mounted) {
+            if (mounted && isMountedRef.current) {
               setIsAuthProcessing(false);
             }
             return;
@@ -259,7 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Only update user if needed
             if (!user || user.id !== session.user.id) {
               const userProfile = await fetchUserProfile(session.user);
-              if (userProfile && mounted) {
+              if (userProfile && mounted && isMountedRef.current) {
                 setUser(userProfile);
                 setIsAuthenticated(true);
                 console.log('User profile updated after token refresh');
@@ -269,14 +291,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           // For any other event without a session
-          if (!session && mounted) {
+          if (!session && mounted && isMountedRef.current) {
             setUser(null);
             setIsAuthenticated(false);
             setIsAuthProcessing(false);
           }
         } catch (error) {
           console.error('Auth state change error:', error);
-          if (mounted) {
+          if (mounted && isMountedRef.current) {
             setUser(null);
             setIsAuthenticated(false);
             setIsAuthProcessing(false);
@@ -297,7 +319,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     console.log('Signing in user:', email);
-    setIsAuthProcessing(true);
+    if (isMountedRef.current) {
+      setIsAuthProcessing(true);
+    }
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ 
@@ -307,7 +331,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Sign in error:', error);
-        setIsAuthProcessing(false);
+        if (isMountedRef.current) {
+          setIsAuthProcessing(false);
+        }
         
         // Provide user-friendly error messages
         if (error.message === 'Invalid login credentials') {
@@ -321,7 +347,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Don't set isAuthProcessing to false here - let the auth state change handler do it
     } catch (error) {
       console.error('Sign in failed:', error);
-      setIsAuthProcessing(false);
+      if (isMountedRef.current) {
+        setIsAuthProcessing(false);
+      }
       throw error;
     }
   };
@@ -333,7 +361,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     monoPasswordHash: string;
   }) => {
     console.log('Signing up user:', email);
-    setIsAuthProcessing(true);
+    if (isMountedRef.current) {
+      setIsAuthProcessing(true);
+    }
     
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -352,7 +382,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (authError) {
         console.error('Sign up error:', authError);
-        setIsAuthProcessing(false);
+        if (isMountedRef.current) {
+          setIsAuthProcessing(false);
+        }
         
         // Provide user-friendly error messages
         if (authError.message === 'User already registered') {
@@ -363,7 +395,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (!authData.user) {
-        setIsAuthProcessing(false);
+        if (isMountedRef.current) {
+          setIsAuthProcessing(false);
+        }
         throw new Error('Failed to create user account');
       }
 
@@ -374,32 +408,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Fetch and set the complete user profile
       const userProfile = await fetchUserProfile(authData.user);
-      if (userProfile) {
+      if (userProfile && isMountedRef.current) {
         setUser(userProfile);
         setIsAuthenticated(true);
         console.log('Sign up completed successfully');
       } else {
-        setIsAuthProcessing(false);
+        if (isMountedRef.current) {
+          setIsAuthProcessing(false);
+        }
         throw new Error('Failed to create user profile');
       }
     } catch (error) {
       console.error('Sign up failed:', error);
-      setIsAuthProcessing(false);
+      if (isMountedRef.current) {
+        setIsAuthProcessing(false);
+      }
       throw error;
     } finally {
-      setIsAuthProcessing(false);
+      if (isMountedRef.current) {
+        setIsAuthProcessing(false);
+      }
     }
   };
 
   const signOut = async () => {
     console.log('Signing out user...');
-    setIsAuthProcessing(true);
+    if (isMountedRef.current) {
+      setIsAuthProcessing(true);
+    }
     
     try {
       // Clear state first
-      setUser(null);
-      setIsAuthenticated(false);
-      setMonoKeyState(null);
+      if (isMountedRef.current) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setMonoKeyState(null);
+      }
       
       // Clear all session data from storage
       await authService.clearSession();
@@ -414,7 +458,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Sign out failed:', error);
     } finally {
-      setIsAuthProcessing(false);
+      if (isMountedRef.current) {
+        setIsAuthProcessing(false);
+      }
     }
   };
 
@@ -426,7 +472,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setMonoKey = (key: string) => {
-    setMonoKeyState(key);
+    if (isMountedRef.current) {
+      setMonoKeyState(key);
+    }
   };
 
   const value = {
