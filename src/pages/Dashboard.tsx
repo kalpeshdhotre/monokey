@@ -58,7 +58,7 @@ const Dashboard: React.FC = () => {
   const [confirmMonoKey, setConfirmMonoKey] = useState('');
   const [isSettingUpKey, setIsSettingUpKey] = useState(false);
 
-  console.log('Dashboard render - user:', user?.email, 'isInitialLoading:', isInitialLoading, 'monoKey:', !!monoKey, 'hasLoadedCredentials:', hasLoadedCredentials);
+  console.log('Dashboard render - user:', user?.email, 'isInitialLoading:', isInitialLoading, 'monoKey:', !!monoKey, 'hasLoadedCredentials:', hasLoadedCredentials, 'credentialsCount:', credentials.length);
 
   useEffect(() => {
     const filtered = credentials.filter(cred =>
@@ -81,13 +81,13 @@ const Dashboard: React.FC = () => {
     if (user && (!user.monoPasswordHash || user.monoPasswordHash === '')) {
       console.log('User needs to set up MonoKey');
       setIsMonoKeySetupOpen(true);
-    } else if (user && !monoKey && !hasLoadedCredentials) {
-      // User has MonoKey set up but not entered yet, and we haven't loaded credentials
+    } else if (user && !monoKey && !isMonoKeySetupOpen) {
+      // User has MonoKey set up but not entered yet
       console.log('User needs to enter MonoKey');
       setIsMonoKeyPromptOpen(true);
     }
     // Note: Credential loading is now handled by CredentialContext
-  }, [user, monoKey, isInitialLoading, hasLoadedCredentials]);
+  }, [user, monoKey, isInitialLoading, isMonoKeySetupOpen]);
 
   const handleMonoKeySetup = async () => {
     if (monoKeySetup !== confirmMonoKey) {
@@ -359,6 +359,7 @@ const Dashboard: React.FC = () => {
         {/* Credentials Table - Always show when MonoKey is available */}
         {monoKey && (
           <div className={`rounded-lg shadow-sm border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            {/* Show loading only on first load, not when switching tabs */}
             {isLoadingCredentials && !hasLoadedCredentials ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

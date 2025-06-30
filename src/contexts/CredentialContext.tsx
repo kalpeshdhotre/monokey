@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { DatabaseService } from '../utils/database';
 import { Credential } from '../types';
@@ -30,10 +30,14 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
   const [hasLoadedCredentials, setHasLoadedCredentials] = useState(false);
+  const loadingRef = useRef(false);
+  const sessionKey = useRef<string | null>(null);
 
   // Auto-load credentials when user and monoKey are available
   useEffect(() => {
-    console.log('CredentialContext useEffect - user:', user?.email, 'monoKey:', !!monoKey, 'hasLoaded:', hasLoadedCredentials, 'isInitialLoading:', isInitialLoading);
+    const currentSessionKey = user?.id + ':' + (monoKey ? 'key-set' : 'no-key');
+    
+    console.log('CredentialContext useEffect - user:', user?.email, 'monoKey:', !!monoKey, 'hasLoaded:', hasLoadedCredentials, 'isInitialLoading:', isInitialLoading, 'sessionKey:', currentSessionKey);
     
     // Don't proceed if auth is still loading initially
     if (isInitialLoading) {
@@ -41,20 +45,29 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return;
     }
 
+    // If session changed (different user or monoKey state changed), reset
+    if (sessionKey.current !== currentSessionKey) {
+      console.log('Session changed, resetting credentials state');
+      sessionKey.current = currentSessionKey;
+      setHasLoadedCredentials(false);
+      setCredentials([]);
+      loadingRef.current = false;
+    }
+
     // Auto-load credentials when user and monoKey are available and we haven't loaded yet
-    if (user && monoKey && !hasLoadedCredentials && !isLoadingCredentials) {
+    if (user && monoKey && !hasLoadedCredentials && !loadingRef.current) {
       console.log('Auto-loading credentials...');
       loadCredentials();
     }
 
-    // Clear credentials when user signs out or monoKey is cleared
-    if (!user || !monoKey) {
-      if (hasLoadedCredentials) {
-        console.log('Clearing credentials due to missing user or monoKey');
+    // Clear credentials when user signs out
+    if (!user) {
+      if (hasLoadedCredentials || credentials.length > 0) {
+        console.log('Clearing credentials due to user sign out');
         clearCredentials();
       }
     }
-  }, [user, monoKey, hasLoadedCredentials, isLoadingCredentials, isInitialLoading]);
+  }, [user, monoKey, hasLoadedCredentials, isInitialLoading]);
 
   const loadCredentials = async () => {
     if (!monoKey) {
@@ -62,12 +75,14 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return;
     }
 
-    if (isLoadingCredentials) {
+    if (loadingRef.current) {
       console.log('Already loading credentials, skipping...');
       return;
     }
 
+    loadingRef.current = true;
     setIsLoadingCredentials(true);
+    
     try {
       console.log('Loading credentials from database...');
       const creds = await DatabaseService.getCredentials(monoKey);
@@ -80,6 +95,7 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Don't set hasLoadedCredentials to true on error
     } finally {
       setIsLoadingCredentials(false);
+      loadingRef.current = false;
     }
   };
 
@@ -150,6 +166,8 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setCredentials([]);
     setHasLoadedCredentials(false);
     setIsLoadingCredentials(false);
+    loadingRef.current = false;
+    sessionKey.current = null;
   };
 
   const value = {
