@@ -267,34 +267,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('User signed in:', session.user.email);
+            
+            // Set processing state only for explicit sign-in events
             if (isMountedRef.current) {
               setIsAuthProcessing(true);
             }
             
-            const userProfile = await fetchUserProfile(session.user);
-            if (userProfile && mounted && isMountedRef.current) {
-              setUser(userProfile);
-              setIsAuthenticated(true);
-              // Don't clear MonoKey on sign in - it should persist
-              console.log('Sign in completed successfully');
-            } else if (mounted && isMountedRef.current) {
-              console.error('Failed to fetch user profile after sign in');
-              setUser(null);
-              setIsAuthenticated(false);
-              setMonoKeyState(null);
-              setIsMonoKeyVerified(false);
-            }
-            
-            if (mounted && isMountedRef.current) {
-              setIsAuthProcessing(false);
+            try {
+              const userProfile = await fetchUserProfile(session.user);
+              if (userProfile && mounted && isMountedRef.current) {
+                setUser(userProfile);
+                setIsAuthenticated(true);
+                // Don't clear MonoKey on sign in - it should persist
+                console.log('Sign in completed successfully');
+              } else if (mounted && isMountedRef.current) {
+                console.error('Failed to fetch user profile after sign in');
+                setUser(null);
+                setIsAuthenticated(false);
+                setMonoKeyState(null);
+                setIsMonoKeyVerified(false);
+              }
+            } finally {
+              // CRITICAL FIX: Always reset processing state
+              if (mounted && isMountedRef.current) {
+                setIsAuthProcessing(false);
+              }
             }
             return;
           }
 
           if (event === 'TOKEN_REFRESHED' && session?.user) {
             console.log('Token refreshed for:', session.user.email);
-            // Silent background refresh - don't show loading state
-            // Only update user if needed, preserve MonoKey
+            // Silent background refresh - don't show loading state or set processing
+            // Only update user if needed, preserve MonoKey and don't trigger loading
             if (!user || user.id !== session.user.id) {
               const userProfile = await fetchUserProfile(session.user);
               if (userProfile && mounted && isMountedRef.current) {
