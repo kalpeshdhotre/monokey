@@ -1,187 +1,53 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Create Supabase client with enhanced session management and timeout handling
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-    storage: {
-      getItem: (key: string) => {
-        try {
-          return localStorage.getItem(key);
-        } catch (error) {
-          console.error('Error getting item from storage:', error);
-          return null;
-        }
-      },
-      setItem: (key: string, value: string) => {
-        try {
-          localStorage.setItem(key, value);
-        } catch (error) {
-          console.error('Error setting item in storage:', error);
-        }
-      },
-      removeItem: (key: string) => {
-        try {
-          localStorage.removeItem(key);
-        } catch (error) {
-          console.error('Error removing item from storage:', error);
-        }
-      }
-    }
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'monokey-app'
-    }
+    persistSession: true,
+    detectSessionInUrl: false
   }
 });
 
-// Enhanced auth service with better error handling and timeouts
+// Auth service for comprehensive session management
 export const authService = {
-  async signUp(email: string, password: string) {
+  clearSession: async () => {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Sign up error:', error);
-      throw error;
-    }
-  },
-
-  async signIn(email: string, password: string) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Sign in error:', error);
-      throw error;
-    }
-  },
-
-  async signOut() {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const { error } = await supabase.auth.signOut();
-      
-      clearTimeout(timeoutId);
-      
-      if (error) throw error;
-    } catch (error) {
-      console.error('Sign out error:', error);
-      throw error;
-    }
-  },
-
-  async getCurrentUser() {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
-      clearTimeout(timeoutId);
-      
-      if (error) throw error;
-      return user;
-    } catch (error) {
-      console.error('Get current user error:', error);
-      throw error;
-    }
-  },
-
-  async getCurrentSession() {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      clearTimeout(timeoutId);
-      
-      if (error) throw error;
-      return session;
-    } catch (error) {
-      console.error('Get current session error:', error);
-      throw error;
-    }
-  },
-
-  async clearSession() {
-    try {
-      // Force clear all session data
-      await supabase.auth.signOut();
-      
-      // Clear localStorage with error handling
-      try {
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-          if (key.startsWith('sb-') || key.includes('supabase')) {
-            localStorage.removeItem(key);
-          }
-        });
-      } catch (error) {
-        console.error('Error clearing localStorage:', error);
+      // Clear all Supabase-related data from localStorage
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-')) {
+          keysToRemove.push(key);
+        }
       }
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+      });
 
-      // Clear sessionStorage with error handling
-      try {
-        const sessionKeys = Object.keys(sessionStorage);
-        sessionKeys.forEach(key => {
-          if (key.startsWith('sb-') || key.includes('supabase')) {
-            sessionStorage.removeItem(key);
-          }
-        });
-      } catch (error) {
-        console.error('Error clearing sessionStorage:', error);
+      // Also clear sessionStorage
+      const sessionKeysToRemove = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith('sb-')) {
+          sessionKeysToRemove.push(key);
+        }
       }
-    } catch (error) {
-      console.error('Clear session error:', error);
-      throw error;
-    }
-  },
-
-  async refreshSession() {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-      const { data, error } = await supabase.auth.refreshSession();
       
-      clearTimeout(timeoutId);
-      
-      if (error) throw error;
-      return data;
+      sessionKeysToRemove.forEach(key => {
+        sessionStorage.removeItem(key);
+      });
+
+      console.log('Session data cleared from storage');
     } catch (error) {
-      console.error('Refresh session error:', error);
-      throw error;
+      console.error('Error clearing session data:', error);
     }
   }
 };

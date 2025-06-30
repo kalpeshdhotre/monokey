@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { supabase } from '../utils/supabase';
+import { supabase, authService } from '../utils/supabase';
 import { AuthState, User } from '../types';
 import CryptoJS from 'crypto-js';
 
@@ -43,6 +43,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setIsAuthenticated(false);
     setMonoKeyState(null);
+    
+    // Clear all session data from storage
+    await authService.clearSession();
     
     // Use Supabase's sign out to properly clear session data
     try {
@@ -97,6 +100,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Error getting user:', error);
+        // If there's an auth error, clear potentially stale session data
+        if (error.message?.includes('refresh_token_not_found') || error.message?.includes('Invalid Refresh Token')) {
+          await authService.clearSession();
+        }
         setUser(null);
         setIsAuthenticated(false);
         return;
@@ -152,6 +159,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (error) {
           console.error('Session error:', error);
+          // Clear potentially stale session data on error
+          if (error.message?.includes('refresh_token_not_found') || error.message?.includes('Invalid Refresh Token')) {
+            await authService.clearSession();
+          }
           if (mounted) {
             setUser(null);
             setIsAuthenticated(false);
@@ -297,6 +308,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('Sign in error:', error);
         setIsAuthProcessing(false);
+        
+        // Provide user-friendly error messages
+        if (error.message === 'Invalid login credentials') {
+          throw new Error('Incorrect email or password. Please try again.');
+        }
+        
         throw error;
       }
 
@@ -336,6 +353,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authError) {
         console.error('Sign up error:', authError);
         setIsAuthProcessing(false);
+        
+        // Provide user-friendly error messages
+        if (authError.message === 'User already registered') {
+          throw new Error('This email is already registered. Please try logging in instead.');
+        }
+        
         throw authError;
       }
 
@@ -377,6 +400,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setIsAuthenticated(false);
       setMonoKeyState(null);
+      
+      // Clear all session data from storage
+      await authService.clearSession();
       
       // Then sign out from Supabase
       const { error } = await supabase.auth.signOut();
