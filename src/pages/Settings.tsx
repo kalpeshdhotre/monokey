@@ -21,7 +21,7 @@ import Modal from '../components/UI/Modal';
 import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
-  const { user, verifyMonoKey, updateUserInContext, refreshUser } = useAuth();
+  const { user, verifyMonoKey, updateUserInContext } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +50,9 @@ const Settings: React.FC = () => {
   const handleUpdateProfile = async () => {
     setIsLoading(true);
     try {
-      console.log('Settings: Updating user profile...');
+      console.log('Settings: Updating user profile...', userSettings);
+      
+      // Update in database
       await DatabaseService.updateUserProfile(userSettings);
       
       // Update the user in context immediately
