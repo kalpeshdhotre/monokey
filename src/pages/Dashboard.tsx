@@ -258,11 +258,11 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // Always show the dashboard UI, even if MonoKey is not set or credentials are not loaded
+  // Always show the dashboard UI structure
   return (
     <div className={`min-h-screen transition-colors ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+        {/* Header - Always visible */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -303,7 +303,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Controls */}
+        {/* Controls - Always visible */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
           <div className="flex-1 max-w-md">
             <div className="relative">
@@ -356,135 +356,138 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Credentials Table - Always show when MonoKey is available */}
+        {/* Credentials Table - Show when MonoKey is available */}
         {monoKey && (
           <div className={`rounded-lg shadow-sm border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            {/* Show loading only on first load, not when switching tabs */}
+            {/* Show loading only on first load */}
             {isLoadingCredentials && !hasLoadedCredentials ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <span className={`ml-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Loading credentials...</span>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className={isDark ? 'bg-gray-700' : 'bg-gray-50'}>
-                    <tr>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                        Account
-                      </th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                        Username
-                      </th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                        Password
-                      </th>
-                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className={`divide-y ${isDark ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
-                    {filteredCredentials.map((credential) => (
-                      <motion.tr
-                        key={credential.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className={`hover:${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {credential.icon?.startsWith('data:') ? (
-                              <img src={credential.icon} alt="Icon" className="w-8 h-8 mr-3 rounded" />
-                            ) : (
-                              <span className="text-2xl mr-3">{credential.icon}</span>
-                            )}
-                            <div>
-                              <div className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                {credential.accountName}
+              <>
+                {/* Table Header - Always show when MonoKey is available */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className={isDark ? 'bg-gray-700' : 'bg-gray-50'}>
+                      <tr>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Account
+                        </th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Username
+                        </th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Password
+                        </th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${isDark ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
+                      {filteredCredentials.map((credential) => (
+                        <motion.tr
+                          key={credential.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className={`hover:${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              {credential.icon?.startsWith('data:') ? (
+                                <img src={credential.icon} alt="Icon" className="w-8 h-8 mr-3 rounded" />
+                              ) : (
+                                <span className="text-2xl mr-3">{credential.icon}</span>
+                              )}
+                              <div>
+                                <div className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                  {credential.accountName}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
-                            <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>{credential.username}</span>
-                            <button
-                              onClick={() => handleSecureAction('copy', 'Username', credential.username)}
-                              className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
-                            >
-                              <Copy className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
-                            <div className="min-w-0 flex-1">
-                              <span className={`text-sm font-mono block truncate ${isDark ? 'text-gray-300' : 'text-gray-900'}`} style={{ minWidth: '120px', maxWidth: '200px' }}>
-                                {visiblePasswords.has(credential.id) ? credential.password : '••••••••••••'}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-1 flex-shrink-0">
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>{credential.username}</span>
                               <button
-                                onClick={() => handleSecureAction('view', 'Password', credential.password, credential.id)}
+                                onClick={() => handleSecureAction('copy', 'Username', credential.username)}
                                 className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
-                                title={visiblePasswords.has(credential.id) ? 'Hide password' : 'Show password'}
-                              >
-                                {visiblePasswords.has(credential.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                              <button
-                                onClick={() => handleSecureAction('copy', 'Password', credential.password)}
-                                className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
-                                title="Copy password"
                               >
                                 <Copy className="w-4 h-4" />
                               </button>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => {
-                                setSelectedCredential(credential);
-                                setIsEditModalOpen(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-900 transition-colors"
-                              title="Edit credential"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCredential(credential)}
-                              className="text-red-600 hover:text-red-900 transition-colors"
-                              title="Delete credential"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              <div className="min-w-0 flex-1">
+                                <span className={`text-sm font-mono block truncate ${isDark ? 'text-gray-300' : 'text-gray-900'}`} style={{ minWidth: '120px', maxWidth: '200px' }}>
+                                  {visiblePasswords.has(credential.id) ? credential.password : '••••••••••••'}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-1 flex-shrink-0">
+                                <button
+                                  onClick={() => handleSecureAction('view', 'Password', credential.password, credential.id)}
+                                  className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
+                                  title={visiblePasswords.has(credential.id) ? 'Hide password' : 'Show password'}
+                                >
+                                  {visiblePasswords.has(credential.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                                <button
+                                  onClick={() => handleSecureAction('copy', 'Password', credential.password)}
+                                  className={`hover:text-blue-600 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
+                                  title="Copy password"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedCredential(credential);
+                                  setIsEditModalOpen(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-900 transition-colors"
+                                title="Edit credential"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCredential(credential)}
+                                className="text-red-600 hover:text-red-900 transition-colors"
+                                title="Delete credential"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-        {/* Show empty state only when MonoKey is available but no credentials */}
-        {monoKey && filteredCredentials.length === 0 && !isLoadingCredentials && hasLoadedCredentials && (
-          <div className="text-center py-12">
-            <Shield className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
-            <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>No credentials found</h3>
-            <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-              {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first credential'}
-            </p>
-            {!searchTerm && (
-              <Button onClick={() => setIsAddModalOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Your First Credential
-              </Button>
+                {/* Show empty state only when no credentials and has loaded */}
+                {filteredCredentials.length === 0 && hasLoadedCredentials && (
+                  <div className="text-center py-12">
+                    <Shield className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
+                    <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>No credentials found</h3>
+                    <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first credential'}
+                    </p>
+                    {!searchTerm && (
+                      <Button onClick={() => setIsAddModalOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Your First Credential
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
