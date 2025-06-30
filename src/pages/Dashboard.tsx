@@ -27,7 +27,7 @@ import MonoKeyPrompt from '../components/MonoPasswordPrompt';
 import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
-  const { user, monoKey, setMonoKey, verifyMonoKey, isLoading: authLoading, refreshUser } = useAuth();
+  const { user, monoKey, setMonoKey, verifyMonoKey, isInitialLoading, refreshUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [filteredCredentials, setFilteredCredentials] = useState<Credential[]>([]);
@@ -51,7 +51,7 @@ const Dashboard: React.FC = () => {
   const [confirmMonoKey, setConfirmMonoKey] = useState('');
   const [isSettingUpKey, setIsSettingUpKey] = useState(false);
 
-  console.log('Dashboard render - user:', user?.email, 'authLoading:', authLoading, 'monoKey:', !!monoKey);
+  console.log('Dashboard render - user:', user?.email, 'isInitialLoading:', isInitialLoading, 'monoKey:', !!monoKey);
 
   useEffect(() => {
     const filtered = credentials.filter(cred =>
@@ -65,7 +65,7 @@ const Dashboard: React.FC = () => {
     console.log('Dashboard useEffect - user:', user?.email, 'monoKey:', !!monoKey);
     
     // Don't proceed if auth is still loading
-    if (authLoading) {
+    if (isInitialLoading) {
       console.log('Auth still loading, waiting...');
       return;
     }
@@ -83,7 +83,7 @@ const Dashboard: React.FC = () => {
       console.log('Loading credentials from Supabase...');
       loadCredentials();
     }
-  }, [user, monoKey, authLoading]);
+  }, [user, monoKey, isInitialLoading]);
 
   const loadCredentials = async () => {
     if (!monoKey) {
@@ -277,7 +277,7 @@ const Dashboard: React.FC = () => {
   };
 
   // Show loading if auth is still loading
-  if (authLoading) {
+  if (isInitialLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">

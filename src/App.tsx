@@ -21,11 +21,11 @@ const LoadingSpinner: React.FC = () => (
 );
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isAuthProcessing } = useAuth();
 
-  console.log('ProtectedRoute - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+  console.log('ProtectedRoute - isAuthenticated:', isAuthenticated, 'isAuthProcessing:', isAuthProcessing);
 
-  if (isLoading) {
+  if (isAuthProcessing) {
     return <LoadingSpinner />;
   }
 
@@ -38,11 +38,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isAuthProcessing } = useAuth();
 
-  console.log('PublicRoute - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+  console.log('PublicRoute - isAuthenticated:', isAuthenticated, 'isAuthProcessing:', isAuthProcessing);
 
-  if (isLoading) {
+  if (isAuthProcessing) {
     return <LoadingSpinner />;
   }
 
@@ -55,12 +55,12 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const AppContent: React.FC = () => {
-  const { isLoading, isAuthenticated, user } = useAuth();
+  const { isInitialLoading, isAuthenticated, user } = useAuth();
 
-  console.log('AppContent - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user?.email);
+  console.log('AppContent - isInitialLoading:', isInitialLoading, 'isAuthenticated:', isAuthenticated, 'user:', user?.email);
 
-  // Show loading spinner during initial auth check with timeout
-  if (isLoading) {
+  // Show loading spinner only during initial auth check
+  if (isInitialLoading) {
     return <LoadingSpinner />;
   }
 

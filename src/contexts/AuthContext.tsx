@@ -13,6 +13,8 @@ interface AuthContextType extends AuthState {
   monoKey: string | null;
   clearAuthData: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  isInitialLoading: boolean;
+  isAuthProcessing: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,7 +30,8 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isAuthProcessing, setIsAuthProcessing] = useState(false);
   const [monoKey, setMonoKeyState] = useState<string | null>(null);
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
@@ -131,6 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       initializationRef.current = true;
+      setIsInitialLoading(true);
       
       try {
         console.log('Initializing auth...');
@@ -151,7 +155,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (mounted) {
             setUser(null);
             setIsAuthenticated(false);
-            setIsLoading(false);
           }
           return;
         }
@@ -180,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } finally {
         if (mounted) {
-          setIsLoading(false);
+          setIsInitialLoading(false);
           initializationRef.current = false;
         }
       }
@@ -214,13 +217,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(null);
             setIsAuthenticated(false);
             setMonoKeyState(null);
-            setIsLoading(false);
+            setIsAuthProcessing(false);
             return;
           }
 
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('User signed in:', session.user.email);
-            setIsLoading(true);
+            setIsAuthProcessing(true);
             
             const userProfile = await fetchUserProfile(session.user);
             if (userProfile && mounted) {
@@ -234,19 +237,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             
             if (mounted) {
-              setIsLoading(false);
+              setIsAuthProcessing(false);
             }
             return;
           }
 
           if (event === 'TOKEN_REFRESHED' && session?.user) {
             console.log('Token refreshed for:', session.user.email);
-            // Don't set loading for token refresh, just update user if needed
+            // Silent background refresh - don't show loading state
+            // Only update user if needed
             if (!user || user.id !== session.user.id) {
               const userProfile = await fetchUserProfile(session.user);
               if (userProfile && mounted) {
                 setUser(userProfile);
                 setIsAuthenticated(true);
+                console.log('User profile updated after token refresh');
               }
             }
             return;
@@ -256,14 +261,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!session && mounted) {
             setUser(null);
             setIsAuthenticated(false);
-            setIsLoading(false);
+            setIsAuthProcessing(false);
           }
         } catch (error) {
           console.error('Auth state change error:', error);
           if (mounted) {
             setUser(null);
             setIsAuthenticated(false);
-            setIsLoading(false);
+            setIsAuthProcessing(false);
           }
         } finally {
           authStateChangeRef.current = false;
@@ -277,11 +282,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       initializationRef.current = false;
       authStateChangeRef.current = false;
     };
-  }, []); // Remove user.id dependency to prevent re-initialization
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     console.log('Signing in user:', email);
-    setIsLoading(true);
+    setIsAuthProcessing(true);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ 
@@ -291,15 +296,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Sign in error:', error);
-        setIsLoading(false);
+        setIsAuthProcessing(false);
         throw error;
       }
 
       console.log('Sign in successful, waiting for auth state change...');
-      // Don't set loading to false here - let the auth state change handler do it
+      // Don't set isAuthProcessing to false here - let the auth state change handler do it
     } catch (error) {
       console.error('Sign in failed:', error);
-      setIsLoading(false);
+      setIsAuthProcessing(false);
       throw error;
     }
   };
@@ -311,7 +316,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     monoPasswordHash: string;
   }) => {
     console.log('Signing up user:', email);
-    setIsLoading(true);
+    setIsAuthProcessing(true);
     
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -330,12 +335,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (authError) {
         console.error('Sign up error:', authError);
-        setIsLoading(false);
+        setIsAuthProcessing(false);
         throw authError;
       }
 
       if (!authData.user) {
-        setIsLoading(false);
+        setIsAuthProcessing(false);
         throw new Error('Failed to create user account');
       }
 
@@ -351,21 +356,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         console.log('Sign up completed successfully');
       } else {
-        setIsLoading(false);
+        setIsAuthProcessing(false);
         throw new Error('Failed to create user profile');
       }
     } catch (error) {
       console.error('Sign up failed:', error);
-      setIsLoading(false);
+      setIsAuthProcessing(false);
       throw error;
     } finally {
-      setIsLoading(false);
+      setIsAuthProcessing(false);
     }
   };
 
   const signOut = async () => {
     console.log('Signing out user...');
-    setIsLoading(true);
+    setIsAuthProcessing(true);
     
     try {
       // Clear state first
@@ -383,7 +388,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Sign out failed:', error);
     } finally {
-      setIsLoading(false);
+      setIsAuthProcessing(false);
     }
   };
 
@@ -401,7 +406,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = {
     user,
     isAuthenticated,
-    isLoading,
+    isLoading: isInitialLoading || isAuthProcessing, // Maintain backward compatibility
+    isInitialLoading,
+    isAuthProcessing,
     signIn,
     signUp,
     signOut,
