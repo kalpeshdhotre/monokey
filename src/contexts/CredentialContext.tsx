@@ -26,7 +26,7 @@ export const useCredentials = () => {
 };
 
 export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, monoKey, isInitialLoading } = useAuth();
+  const { user, monoKey, isInitialLoading, isMonoKeyVerified } = useAuth();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
   const [hasLoadedCredentials, setHasLoadedCredentials] = useState(false);
@@ -34,7 +34,7 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Use refs to track state without causing re-renders
   const loadingRef = useRef(false);
   const currentUserRef = useRef<string | null>(null);
-  const currentMonoKeyRef = useRef<string | null>(null);
+  const hasLoadedForCurrentUserRef = useRef(false);
   const isMountedRef = useRef(true);
 
   // Cleanup on unmount
@@ -53,13 +53,12 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     const userId = user?.id || null;
-    const monoKeyValue = monoKey || null;
 
     // Check if user changed (including logout)
     if (currentUserRef.current !== userId) {
       console.log('User changed, resetting credentials');
       currentUserRef.current = userId;
-      currentMonoKeyRef.current = monoKeyValue;
+      hasLoadedForCurrentUserRef.current = false;
       
       if (isMountedRef.current) {
         setCredentials([]);
@@ -74,27 +73,24 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }
 
-    // Check if monoKey changed
-    if (currentMonoKeyRef.current !== monoKeyValue) {
-      console.log('MonoKey changed');
-      currentMonoKeyRef.current = monoKeyValue;
-      
-      // If monoKey was cleared, don't reset everything
-      if (!monoKeyValue) {
-        return;
-      }
-    }
-
-    // Load credentials if we have both user and monoKey, and haven't loaded yet
-    if (userId && monoKeyValue && !hasLoadedCredentials && !loadingRef.current && isMountedRef.current) {
-      console.log('Loading credentials for user:', user?.email);
+    // Load credentials ONLY if:
+    // 1. We have a user
+    // 2. MonoKey is verified (not just present)
+    // 3. We haven't loaded for this user yet
+    // 4. We're not already loading
+    if (userId && isMonoKeyVerified && monoKey && !hasLoadedForCurrentUserRef.current && !loadingRef.current && isMountedRef.current) {
+      console.log('Loading credentials for user:', user?.email, 'MonoKey verified:', isMonoKeyVerified);
       loadCredentials();
     }
-  }, [user?.id, monoKey, isInitialLoading, hasLoadedCredentials]);
+  }, [user?.id, isMonoKeyVerified, monoKey, isInitialLoading]);
 
   const loadCredentials = async () => {
-    if (!monoKey || !user) {
-      console.log('Missing monoKey or user for loading credentials');
+    if (!monoKey || !user || !isMonoKeyVerified) {
+      console.log('Missing requirements for loading credentials:', { 
+        hasMonoKey: !!monoKey, 
+        hasUser: !!user, 
+        isVerified: isMonoKeyVerified 
+      });
       return;
     }
 
@@ -122,6 +118,7 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (isMountedRef.current) {
         setCredentials(creds);
         setHasLoadedCredentials(true);
+        hasLoadedForCurrentUserRef.current = true;
       }
     } catch (error: any) {
       console.error('Load credentials error:', error);
@@ -207,7 +204,7 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
     loadingRef.current = false;
     currentUserRef.current = null;
-    currentMonoKeyRef.current = null;
+    hasLoadedForCurrentUserRef.current = false;
   };
 
   const value = {

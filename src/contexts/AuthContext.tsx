@@ -15,6 +15,7 @@ interface AuthContextType extends AuthState {
   refreshUser: () => Promise<void>;
   isInitialLoading: boolean;
   isAuthProcessing: boolean;
+  isMonoKeyVerified: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +34,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isAuthProcessing, setIsAuthProcessing] = useState(false);
   const [monoKey, setMonoKeyState] = useState<string | null>(null);
+  const [isMonoKeyVerified, setIsMonoKeyVerified] = useState(false);
+  
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -53,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setIsAuthenticated(false);
       setMonoKeyState(null);
+      setIsMonoKeyVerified(false);
     }
     
     // Clear all session data from storage
@@ -118,6 +122,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isMountedRef.current) {
           setUser(null);
           setIsAuthenticated(false);
+          setMonoKeyState(null);
+          setIsMonoKeyVerified(false);
         }
         return;
       }
@@ -131,16 +137,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (isMountedRef.current) {
           setUser(null);
           setIsAuthenticated(false);
+          setMonoKeyState(null);
+          setIsMonoKeyVerified(false);
         }
       } else if (isMountedRef.current) {
         setUser(null);
         setIsAuthenticated(false);
+        setMonoKeyState(null);
+        setIsMonoKeyVerified(false);
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
       if (isMountedRef.current) {
         setUser(null);
         setIsAuthenticated(false);
+        setMonoKeyState(null);
+        setIsMonoKeyVerified(false);
       }
     }
   };
@@ -242,11 +254,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         try {
           if (event === 'SIGNED_OUT') {
-            console.log('User signed out');
+            console.log('User signed out - clearing all auth state');
             if (isMountedRef.current) {
               setUser(null);
               setIsAuthenticated(false);
               setMonoKeyState(null);
+              setIsMonoKeyVerified(false);
               setIsAuthProcessing(false);
             }
             return;
@@ -262,11 +275,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (userProfile && mounted && isMountedRef.current) {
               setUser(userProfile);
               setIsAuthenticated(true);
+              // Don't clear MonoKey on sign in - it should persist
               console.log('Sign in completed successfully');
             } else if (mounted && isMountedRef.current) {
               console.error('Failed to fetch user profile after sign in');
               setUser(null);
               setIsAuthenticated(false);
+              setMonoKeyState(null);
+              setIsMonoKeyVerified(false);
             }
             
             if (mounted && isMountedRef.current) {
@@ -278,7 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (event === 'TOKEN_REFRESHED' && session?.user) {
             console.log('Token refreshed for:', session.user.email);
             // Silent background refresh - don't show loading state
-            // Only update user if needed
+            // Only update user if needed, preserve MonoKey
             if (!user || user.id !== session.user.id) {
               const userProfile = await fetchUserProfile(session.user);
               if (userProfile && mounted && isMountedRef.current) {
@@ -294,6 +310,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!session && mounted && isMountedRef.current) {
             setUser(null);
             setIsAuthenticated(false);
+            setMonoKeyState(null);
+            setIsMonoKeyVerified(false);
             setIsAuthProcessing(false);
           }
         } catch (error) {
@@ -301,6 +319,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (mounted && isMountedRef.current) {
             setUser(null);
             setIsAuthenticated(false);
+            setMonoKeyState(null);
+            setIsMonoKeyVerified(false);
             setIsAuthProcessing(false);
           }
         } finally {
@@ -438,11 +458,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      // Clear state first
+      // Clear state first - including MonoKey
       if (isMountedRef.current) {
         setUser(null);
         setIsAuthenticated(false);
         setMonoKeyState(null);
+        setIsMonoKeyVerified(false);
       }
       
       // Clear all session data from storage
@@ -472,8 +493,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setMonoKey = (key: string) => {
+    console.log('Setting MonoKey - this should persist until logout');
     if (isMountedRef.current) {
       setMonoKeyState(key);
+      setIsMonoKeyVerified(true);
     }
   };
 
@@ -483,6 +506,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading: isInitialLoading || isAuthProcessing, // Maintain backward compatibility
     isInitialLoading,
     isAuthProcessing,
+    isMonoKeyVerified,
     signIn,
     signUp,
     signOut,

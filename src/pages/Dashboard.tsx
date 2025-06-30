@@ -27,7 +27,7 @@ import MonoKeyPrompt from '../components/MonoPasswordPrompt';
 import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
-  const { user, monoKey, setMonoKey, verifyMonoKey, isInitialLoading, refreshUser } = useAuth();
+  const { user, monoKey, setMonoKey, verifyMonoKey, isInitialLoading, isMonoKeyVerified, refreshUser } = useAuth();
   const { 
     credentials, 
     isLoadingCredentials, 
@@ -59,7 +59,7 @@ const Dashboard: React.FC = () => {
   const [confirmMonoKey, setConfirmMonoKey] = useState('');
   const [isSettingUpKey, setIsSettingUpKey] = useState(false);
 
-  console.log('Dashboard render - user:', user?.email, 'monoKey:', !!monoKey, 'credentials:', credentials.length, 'hasLoaded:', hasLoadedCredentials, 'isLoading:', isLoadingCredentials);
+  console.log('Dashboard render - user:', user?.email, 'isMonoKeyVerified:', isMonoKeyVerified, 'credentials:', credentials.length, 'hasLoaded:', hasLoadedCredentials, 'isLoading:', isLoadingCredentials);
 
   // Filter credentials based on search term
   useEffect(() => {
@@ -70,22 +70,22 @@ const Dashboard: React.FC = () => {
     setFilteredCredentials(filtered);
   }, [searchTerm, credentials]);
 
-  // Handle MonoKey setup flow
+  // Handle MonoKey setup flow - only check once when user loads
   useEffect(() => {
     if (isInitialLoading || !user) {
       return;
     }
 
-    // Check if user needs to set up MonoKey
-    if (!user.monoPasswordHash || user.monoPasswordHash === '') {
+    // Check if user needs to set up MonoKey (only if not already verified)
+    if (!isMonoKeyVerified && (!user.monoPasswordHash || user.monoPasswordHash === '')) {
       console.log('User needs to set up MonoKey');
       setIsMonoKeySetupOpen(true);
-    } else if (!monoKey && !isMonoKeySetupOpen) {
+    } else if (!isMonoKeyVerified && user.monoPasswordHash && !isMonoKeySetupOpen) {
       // User has MonoKey set up but not entered yet
       console.log('User needs to enter MonoKey');
       setIsMonoKeyPromptOpen(true);
     }
-  }, [user, monoKey, isInitialLoading, isMonoKeySetupOpen]);
+  }, [user, isMonoKeyVerified, isInitialLoading, isMonoKeySetupOpen]);
 
   const handleMonoKeySetup = async () => {
     if (monoKeySetup !== confirmMonoKey) {
@@ -108,7 +108,7 @@ const Dashboard: React.FC = () => {
       await DatabaseService.updateMonoPasswordHash(monoKeyHash);
 
       await refreshUser();
-      setMonoKey(monoKeySetup);
+      setMonoKey(monoKeySetup); // This will set isMonoKeyVerified to true
       setIsMonoKeySetupOpen(false);
       setMonoKeySetup('');
       setConfirmMonoKey('');
@@ -123,7 +123,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleSecureAction = (type: 'view' | 'copy', field: string, value: string, credentialId?: string) => {
-    if (!monoKey) {
+    if (!isMonoKeyVerified) {
       setPendingAction({ type, field, value, credentialId });
       setIsMonoKeyPromptOpen(true);
       return;
@@ -158,26 +158,22 @@ const Dashboard: React.FC = () => {
 
   const handleMonoKeyVerified = async (key: string) => {
     console.log('MonoKey verified, setting key...');
-    setMonoKey(key);
+    setMonoKey(key); // This will set isMonoKeyVerified to true and trigger credential loading
     setIsMonoKeyPromptOpen(false);
     
     if (pendingAction) {
-      if (pendingAction.type === 'load') {
-        await loadCredentials();
-      } else {
-        executeSecureAction(
-          pendingAction.type as 'view' | 'copy', 
-          pendingAction.field!, 
-          pendingAction.value!, 
-          pendingAction.credentialId
-        );
-      }
+      executeSecureAction(
+        pendingAction.type as 'view' | 'copy', 
+        pendingAction.field!, 
+        pendingAction.value!, 
+        pendingAction.credentialId
+      );
       setPendingAction(null);
     }
   };
 
   const handleSaveCredential = async (credentialData: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!monoKey) {
+    if (!isMonoKeyVerified) {
       toast.error('MonoKey required');
       return;
     }
@@ -275,7 +271,7 @@ const Dashboard: React.FC = () => {
                 variant="outline"
                 size="sm"
                 isLoading={isLoadingCredentials}
-                disabled={!monoKey}
+                disabled={!isMonoKeyVerified}
                 className={isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : ''}
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
@@ -306,7 +302,7 @@ const Dashboard: React.FC = () => {
           <div className="flex space-x-3">
             <Button
               onClick={() => {
-                if (!monoKey) {
+                if (!isMonoKeyVerified) {
                   setIsMonoKeyPromptOpen(true);
                   return;
                 }
@@ -320,8 +316,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Show message if MonoKey is not available */}
-        {!monoKey && !isMonoKeySetupOpen && (
+        {/* Show message if MonoKey is not verified */}
+        {!isMonoKeyVerified && !isMonoKeySetupOpen && (
           <div className={`rounded-lg border p-6 mb-6 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <div className="text-center">
               <Shield className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
@@ -338,8 +334,8 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Credentials Table - Always show structure when MonoKey is available */}
-        {monoKey && (
+        {/* Credentials Table - Always show structure when MonoKey is verified */}
+        {isMonoKeyVerified && (
           <div className={`rounded-lg shadow-sm border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             {/* Show loading indicator only on first load or when explicitly refreshing */}
             {isLoadingCredentials && !hasLoadedCredentials ? (
