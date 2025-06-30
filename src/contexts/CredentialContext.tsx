@@ -36,7 +36,6 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const currentUserRef = useRef<string | null>(null);
   const hasLoadedForCurrentUserRef = useRef(false);
   const isMountedRef = useRef(true);
-  const lastLoadAttemptRef = useRef<number>(0);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -46,7 +45,7 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, []);
 
-  // CRITICAL FIX: Simplified effect that only triggers when we actually need to load
+  // Simplified effect that only triggers when we actually need to load
   useEffect(() => {
     // Skip if auth is still loading
     if (isInitialLoading) {
@@ -55,7 +54,6 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     const userId = user?.id || null;
-    const now = Date.now();
 
     // Check if user changed (including logout)
     if (currentUserRef.current !== userId) {
@@ -69,7 +67,6 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setIsLoadingCredentials(false);
       }
       loadingRef.current = false;
-      lastLoadAttemptRef.current = 0;
       
       // If no user, stop here
       if (!userId) {
@@ -78,17 +75,15 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }
 
-    // CRITICAL: Only load if ALL conditions are met AND we haven't loaded recently
+    // Load credentials if ALL conditions are met
     const shouldLoad = userId && 
                       isMonoKeyVerified && 
                       monoKey && 
                       !hasLoadedForCurrentUserRef.current && 
-                      !loadingRef.current &&
-                      (now - lastLoadAttemptRef.current) > 1000; // Prevent rapid re-attempts
+                      !loadingRef.current;
 
     if (shouldLoad && isMountedRef.current) {
       console.log('CredentialContext: All conditions met, loading credentials');
-      lastLoadAttemptRef.current = now;
       loadCredentials();
     } else {
       console.log('CredentialContext: Conditions not met for loading:', {
@@ -96,8 +91,7 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isMonoKeyVerified,
         hasMonoKey: !!monoKey,
         hasLoaded: hasLoadedForCurrentUserRef.current,
-        isLoading: loadingRef.current,
-        timeSinceLastAttempt: now - lastLoadAttemptRef.current
+        isLoading: loadingRef.current
       });
     }
   }, [user?.id, isMonoKeyVerified, monoKey, isInitialLoading]);
@@ -229,7 +223,6 @@ export const CredentialProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     loadingRef.current = false;
     currentUserRef.current = null;
     hasLoadedForCurrentUserRef.current = false;
-    lastLoadAttemptRef.current = 0;
   };
 
   const value = {
