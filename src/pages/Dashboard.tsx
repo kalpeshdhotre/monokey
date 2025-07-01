@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Sun,
   Moon,
-  AlertTriangle
+  AlertTriangle,
+  Key
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCredentials } from '../contexts/CredentialContext';
@@ -70,22 +71,8 @@ const Dashboard: React.FC = () => {
     setFilteredCredentials(filtered);
   }, [searchTerm, credentials]);
 
-  // Handle MonoKey setup flow - only check once when user loads
-  useEffect(() => {
-    if (isInitialLoading || !user) {
-      return;
-    }
-
-    // Check if user needs to set up MonoKey (only if not already verified)
-    if (!isMonoKeyVerified && (!user.monoPasswordHash || user.monoPasswordHash === '')) {
-      console.log('User needs to set up MonoKey');
-      setIsMonoKeySetupOpen(true);
-    } else if (!isMonoKeyVerified && user.monoPasswordHash && !isMonoKeySetupOpen) {
-      // User has MonoKey set up but not entered yet
-      console.log('User needs to enter MonoKey');
-      setIsMonoKeyPromptOpen(true);
-    }
-  }, [user, isMonoKeyVerified, isInitialLoading, isMonoKeySetupOpen]);
+  // Removed the automatic modal opening useEffect - this was the bug!
+  // Users will now see inline prompts instead of being forced into modals
 
   const handleMonoKeySetup = async () => {
     if (monoKeySetup !== confirmMonoKey) {
@@ -213,6 +200,10 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Determine what type of MonoKey prompt to show
+  const needsMonoKeySetup = user && (!user.monoPasswordHash || user.monoPasswordHash === '');
+  const needsMonoKeyVerification = user && user.monoPasswordHash && !isMonoKeyVerified;
+
   // Show loading only during initial auth check
   if (isInitialLoading) {
     return (
@@ -303,7 +294,11 @@ const Dashboard: React.FC = () => {
             <Button
               onClick={() => {
                 if (!isMonoKeyVerified) {
-                  setIsMonoKeyPromptOpen(true);
+                  if (needsMonoKeySetup) {
+                    setIsMonoKeySetupOpen(true);
+                  } else {
+                    setIsMonoKeyPromptOpen(true);
+                  }
                   return;
                 }
                 setIsAddModalOpen(true);
@@ -316,20 +311,49 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Show message if MonoKey is not verified */}
-        {!isMonoKeyVerified && !isMonoKeySetupOpen && (
+        {/* MonoKey Status Messages - Updated to handle both setup and verification */}
+        {!isMonoKeyVerified && (
           <div className={`rounded-lg border p-6 mb-6 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <div className="text-center">
-              <Shield className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
-              <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                MonoKey Required
-              </h3>
-              <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                Please enter your MonoKey to access your secure credentials.
-              </p>
-              <Button onClick={() => setIsMonoKeyPromptOpen(true)}>
-                Enter MonoKey
-              </Button>
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                needsMonoKeySetup 
+                  ? 'bg-blue-100 dark:bg-blue-900/20' 
+                  : 'bg-yellow-100 dark:bg-yellow-900/20'
+              }`}>
+                {needsMonoKeySetup ? (
+                  <Key className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                ) : (
+                  <Shield className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
+                )}
+              </div>
+              
+              {needsMonoKeySetup ? (
+                <>
+                  <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    Set Up Your MonoKey
+                  </h3>
+                  <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Create your master key to start securing your credentials. This key will encrypt all your data.
+                  </p>
+                  <Button onClick={() => setIsMonoKeySetupOpen(true)}>
+                    <Key className="w-4 h-4 mr-2" />
+                    Set Up MonoKey
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    MonoKey Required
+                  </h3>
+                  <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Please enter your MonoKey to access your secure credentials.
+                  </p>
+                  <Button onClick={() => setIsMonoKeyPromptOpen(true)}>
+                    <Shield className="w-4 h-4 mr-2" />
+                    Enter MonoKey
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -512,9 +536,10 @@ const Dashboard: React.FC = () => {
         </div>
       </Modal>
 
+      {/* MonoKey Setup Modal - Now closeable */}
       <Modal 
         isOpen={isMonoKeySetupOpen} 
-        onClose={() => {}} 
+        onClose={() => setIsMonoKeySetupOpen(false)} 
         title="Set Up Your MonoKey"
       >
         <div className="space-y-6">
@@ -560,14 +585,23 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
 
-          <Button
-            onClick={handleMonoKeySetup}
-            className="w-full"
-            disabled={!monoKeySetup || !confirmMonoKey || isSettingUpKey}
-            isLoading={isSettingUpKey}
-          >
-            Set Up MonoKey
-          </Button>
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsMonoKeySetupOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMonoKeySetup}
+              disabled={!monoKeySetup || !confirmMonoKey || isSettingUpKey}
+              isLoading={isSettingUpKey}
+              className="flex-1"
+            >
+              Set Up MonoKey
+            </Button>
+          </div>
         </div>
       </Modal>
 
