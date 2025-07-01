@@ -49,6 +49,11 @@ export class CryptoUtils {
     return CryptoJS.SHA256(password).toString();
   }
 
+  static compareHash(input: string, hashed: string): boolean {
+    const inputHash = CryptoJS.SHA256(input).toString();
+    return inputHash === hashed;
+  }
+
   static generatePassword(options: {
     length: number;
     includeUppercase: boolean;

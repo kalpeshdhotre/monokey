@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase, authService } from '../utils/supabase';
 import { AuthState, User } from '../types';
-import CryptoJS from 'crypto-js';
+import { CryptoUtils } from '../utils/crypto';
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
@@ -28,6 +28,9 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// SessionStorage key for MonoKey
+const MONOKEY_SESSION_KEY = 'monokey_session';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -58,6 +61,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(false);
       setMonoKeyState(null);
       setIsMonoKeyVerified(false);
+    }
+    
+    // Clear MonoKey from sessionStorage
+    try {
+      sessionStorage.removeItem(MONOKEY_SESSION_KEY);
+      console.log('MonoKey cleared from sessionStorage');
+    } catch (error) {
+      console.error('Error clearing MonoKey from sessionStorage:', error);
     }
     
     // Clear all session data from storage
@@ -109,6 +120,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const checkStoredMonoKey = (userProfile: User) => {
+    try {
+      const storedMonoKey = sessionStorage.getItem(MONOKEY_SESSION_KEY);
+      if (storedMonoKey && userProfile.monoPasswordHash) {
+        console.log('Found stored MonoKey, verifying...');
+        
+        // Verify the stored MonoKey against the user's hash
+        if (CryptoUtils.compareHash(storedMonoKey, userProfile.monoPasswordHash)) {
+          console.log('Stored MonoKey verified successfully');
+          if (isMountedRef.current) {
+            setMonoKeyState(storedMonoKey);
+            setIsMonoKeyVerified(true);
+          }
+          return true;
+        } else {
+          console.log('Stored MonoKey verification failed, clearing...');
+          sessionStorage.removeItem(MONOKEY_SESSION_KEY);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking stored MonoKey:', error);
+      // Clear potentially corrupted data
+      try {
+        sessionStorage.removeItem(MONOKEY_SESSION_KEY);
+      } catch (clearError) {
+        console.error('Error clearing corrupted MonoKey:', clearError);
+      }
+    }
+    return false;
+  };
+
   const refreshUser = async () => {
     try {
       console.log('Refreshing user...');
@@ -134,6 +176,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userProfile && isMountedRef.current) {
           setUser(userProfile);
           setIsAuthenticated(true);
+          
+          // Check for stored MonoKey after setting user
+          checkStoredMonoKey(userProfile);
+          
           console.log('User refreshed successfully');
         } else if (isMountedRef.current) {
           setUser(null);
@@ -215,6 +261,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (userProfile && mounted && isMountedRef.current) {
             setUser(userProfile);
             setIsAuthenticated(true);
+            
+            // Check for stored MonoKey after setting user
+            checkStoredMonoKey(userProfile);
+            
             console.log('Auth initialized with existing session');
           } else if (mounted && isMountedRef.current) {
             setUser(null);
@@ -271,6 +321,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setIsMonoKeyVerified(false);
               setIsAuthProcessing(false);
             }
+            // Clear MonoKey from sessionStorage on sign out
+            try {
+              sessionStorage.removeItem(MONOKEY_SESSION_KEY);
+            } catch (error) {
+              console.error('Error clearing MonoKey on sign out:', error);
+            }
             return;
           }
 
@@ -284,7 +340,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (userProfile && mounted && isMountedRef.current) {
               setUser(userProfile);
               setIsAuthenticated(true);
-              // Don't clear MonoKey on sign in - it should persist
+              
+              // Check for stored MonoKey after sign in
+              checkStoredMonoKey(userProfile);
+              
               console.log('Sign in completed successfully');
             } else if (mounted && isMountedRef.current) {
               console.error('Failed to fetch user profile after sign in');
@@ -309,6 +368,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (userProfile && mounted && isMountedRef.current) {
                 setUser(userProfile);
                 setIsAuthenticated(true);
+                
+                // Check for stored MonoKey after token refresh
+                checkStoredMonoKey(userProfile);
+                
                 console.log('User profile updated after token refresh');
               }
             }
@@ -475,6 +538,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsMonoKeyVerified(false);
       }
       
+      // Clear MonoKey from sessionStorage
+      try {
+        sessionStorage.removeItem(MONOKEY_SESSION_KEY);
+        console.log('MonoKey cleared from sessionStorage on sign out');
+      } catch (error) {
+        console.error('Error clearing MonoKey on sign out:', error);
+      }
+      
       // Clear all session data from storage
       await authService.clearSession();
       
@@ -497,15 +568,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const verifyMonoKey = (inputKey: string): boolean => {
     if (!user?.monoPasswordHash) return false;
     
-    const inputHash = CryptoJS.SHA256(inputKey).toString();
-    return inputHash === user.monoPasswordHash;
+    return CryptoUtils.compareHash(inputKey, user.monoPasswordHash);
   };
 
   const setMonoKey = (key: string) => {
-    console.log('Setting MonoKey - this should persist until logout');
+    console.log('Setting MonoKey - storing in sessionStorage for session persistence');
     if (isMountedRef.current) {
       setMonoKeyState(key);
       setIsMonoKeyVerified(true);
+      
+      // Store MonoKey in sessionStorage for session persistence
+      try {
+        sessionStorage.setItem(MONOKEY_SESSION_KEY, key);
+        console.log('MonoKey stored in sessionStorage successfully');
+      } catch (error) {
+        console.error('Error storing MonoKey in sessionStorage:', error);
+        // Continue without sessionStorage if it fails
+      }
     }
   };
 
