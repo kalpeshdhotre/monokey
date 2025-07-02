@@ -41,7 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isMonoKeyVerified, setIsMonoKeyVerified] = useState(false);
   
   const initializationRef = useRef(false);
-  const authStateChangeRef = useRef(false);
   const isMountedRef = useRef(true);
 
   // Cleanup on unmount
@@ -291,7 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Listen for auth changes with debouncing
+    // Listen for auth changes - REMOVED DEBOUNCING
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted || !isMountedRef.current) return;
@@ -302,13 +301,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // Debounce auth state changes
-        if (authStateChangeRef.current) {
-          console.log('Auth state change already in progress, skipping...');
-          return;
-        }
-
-        authStateChangeRef.current = true;
         console.log('Auth state change:', event, session?.user?.email || 'no user');
 
         try {
@@ -395,8 +387,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsMonoKeyVerified(false);
             setIsAuthProcessing(false);
           }
-        } finally {
-          authStateChangeRef.current = false;
         }
       }
     );
@@ -405,7 +395,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       subscription.unsubscribe();
       initializationRef.current = false;
-      authStateChangeRef.current = false;
     };
   }, []);
 
